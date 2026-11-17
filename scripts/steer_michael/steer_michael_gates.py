@@ -177,12 +177,14 @@ F_STEER_QUOTE = (
 )
 F_SURGE_QUOTE = "Surge 3 is not F."
 F_OPERATIONALIZATION = (
-    "For StEER Michael, F is coded only from the existing component field "
-    "wall_structure_damage_. F=1 if the field is non-missing and > 0; F=0 if "
-    "the field is non-missing and = 0; missing = unobserved. Fenestration, "
-    "roof-structure, roof/wall substrate, ordinal wind grade, and surge grade "
-    "are not used to code F. Interior waterline and charring fields are absent "
-    "from the source table (unobserved) and cannot set F=1."
+    "For StEER Michael, F is coded only from wall_structure_damage_. "
+    "F=1 if the field is non-missing and > 0; F=0 if the field is "
+    "non-missing and = 0 and the building's points agree. Missing fields "
+    "and inconsistent multi-point cases (points disagree on 0 vs >0) are "
+    "unobserved, never F=0, and stay in Q. Fenestration, roof-structure, "
+    "roof/wall substrate, ordinal wind grade, and surge grade are not used "
+    "to code F. Interior waterline and charring fields are absent from the "
+    "source table (unobserved) and cannot set F=1."
 )
 
 
@@ -304,7 +306,13 @@ def wall_structure_F(row):
 
 
 def building_F(b):
-    """Building-level F. Multi-point F disagreements are not forced to 0 or 1."""
+    """Building-level F from wall_structure_damage_ only.
+
+    F=1 if every point is non-missing and >0, or the sole point is >0.
+    F=0 only if every point is non-missing and =0.
+    Missing and inconsistent multi-point cases (0 vs >0, or mixed with
+    missing) are unobserved, never F=0, and stay in Q.
+    """
     per_point = []
     for p in b["points"]:
         code = wall_structure_F(p["row"])
@@ -319,14 +327,18 @@ def building_F(b):
         F = Fs[0]
         consistent = True
         wall_status = statuses[0]
+        unobs_reason = "missing" if F == "unobserved" else ""
     else:
-        F = "inconsistent"
+        # Disagreeing 0 vs >0 (or mixed missing) is unobserved, never F=0.
+        F = "unobserved"
         consistent = False
         wall_status = "inconsistent"
+        unobs_reason = "inconsistent_multi_point"
     return {
         "F": F,
         "F_consistent": consistent,
         "wall_structure_status": wall_status,
+        "unobserved_reason": unobs_reason,
         "per_point": per_point,
     }
 
@@ -1035,39 +1047,89 @@ def main():
     n_F1 = sum(1 for b in Q_buildings if b["F_info"]["F"] == 1)
     n_F0 = sum(1 for b in Q_buildings if b["F_info"]["F"] == 0)
     n_F_unobs = sum(1 for b in Q_buildings if b["F_info"]["F"] == "unobserved")
-    n_F_inconsistent = sum(1 for b in Q_buildings if b["F_info"]["F"] == "inconsistent")
+    n_F_unobs_missing = sum(
+        1 for b in Q_buildings
+        if b["F_info"]["F"] == "unobserved" and b["F_info"].get("unobserved_reason") == "missing"
+    )
+    n_F_unobs_inconsistent = sum(
+        1 for b in Q_buildings
+        if b["F_info"]["F"] == "unobserved"
+        and b["F_info"].get("unobserved_reason") == "inconsistent_multi_point"
+    )
 
     F1_by_grade = {g: 0 for g in ["0", "1", "2", "3", "4"]}
-    F1_inconsistent = []
+    F1_inconsistent_wind = []
+    F1_grade3_major = []
+    F1_grade3_unknown = []
     for b in Q_buildings:
         if b["F_info"]["F"] != 1:
             continue
+        entry = {
+            "footprint_uid": b["footprint_uid"],
+            "fulcrum_ids": b["fulcrum_ids"],
+            "wind_grades": b["wind_grades"],
+            "wind_mapped": (b.get("wind_mapped") or {}).get("mapped"),
+            "wall_structure_per_point": [
+                {
+                    "fulcrum_id": pt["fulcrum_id"],
+                    "wind_damage_rating": pt["wind_damage_rating"],
+                    "wall_structure_damage_": pt["wall_structure_raw"],
+                    "F": pt["F"],
+                }
+                for pt in b["F_info"]["per_point"]
+            ],
+        }
         if not b["wind_agree"]:
-            F1_inconsistent.append({
-                "footprint_uid": b["footprint_uid"],
-                "fulcrum_ids": b["fulcrum_ids"],
-                "wind_grades": b["wind_grades"],
-                "wall_structure_per_point": [
-                    {
-                        "fulcrum_id": pt["fulcrum_id"],
-                        "wind_damage_rating": pt["wind_damage_rating"],
-                        "wall_structure_damage_": pt["wall_structure_raw"],
-                        "F": pt["F"],
-                    }
-                    for pt in b["F_info"]["per_point"]
-                ],
-            })
+            F1_inconsistent_wind.append(entry)
             continue
         g = b["wind_grade"] if b["wind_grade"] is not None else ""
         if g in F1_by_grade:
             F1_by_grade[g] += 1
         else:
-            F1_inconsistent.append({
-                "footprint_uid": b["footprint_uid"],
-                "fulcrum_ids": b["fulcrum_ids"],
-                "wind_grades": b["wind_grades"],
-                "note": f"F=1 but unexpected wind_grade={g!r}",
-            })
+            entry["note"] = f"F=1 but unexpected wind_grade={g!r}"
+            F1_inconsistent_wind.append(entry)
+            continue
+        if g == "3":
+            if entry["wind_mapped"] == "major":
+                F1_grade3_major.append(entry)
+            elif entry["wind_mapped"] == "unknown":
+                F1_grade3_unknown.append(entry)
+            else:
+                entry["note"] = f"F=1 grade 3 with unexpected label {entry['wind_mapped']!r}"
+                F1_grade3_unknown.append(entry)
+
+    # Possible U_F,only samples identified without computing U or reading Y-hat^s:
+    # Y=major/destroyed cannot be U_F,only (a no/minor satellite call would also
+    # set U_E=1). Remaining F=1 cases with no official no/minor/major/destroyed
+    # Y are the grade-3 unknowns and the wind-disagree footprint.
+    possible_UF_only = []
+    for e in F1_grade3_unknown:
+        possible_UF_only.append({
+            **e,
+            "why_possible_U_F_only": "F=1 and wind grade 3 landed as unknown; no official 4-class Y",
+        })
+    for e in F1_inconsistent_wind:
+        possible_UF_only.append({
+            **e,
+            "why_possible_U_F_only": (
+                "F=1 and inconsistent multi-point wind grades; dropped from "
+                "wind Y, so no official 4-class Y"
+            ),
+        })
+
+    F_unobs_footprints = [
+        {
+            "footprint_uid": b["footprint_uid"],
+            "fulcrum_ids": b["fulcrum_ids"],
+            "wind_grades": b["wind_grades"],
+            "unobserved_reason": b["F_info"].get("unobserved_reason"),
+            "per_point": b["F_info"]["per_point"],
+            "note": "Unobserved, never F=0; stays in Q.",
+        }
+        for b in Q_buildings
+        if b["F_info"]["F"] == "unobserved"
+        and b["F_info"].get("unobserved_reason") == "inconsistent_multi_point"
+    ]
 
     F_observability = {
         "unit": "unique footprints / buildings",
@@ -1083,7 +1145,8 @@ def main():
         "n_F_eq_1": n_F1,
         "n_F_eq_0": n_F0,
         "n_F_unobserved": n_F_unobs,
-        "n_F_inconsistent_multi_point": n_F_inconsistent,
+        "n_F_unobserved_missing": n_F_unobs_missing,
+        "n_F_unobserved_inconsistent_multi_point": n_F_unobs_inconsistent,
         "wall_structure_damage_distribution_in_Q": {
             "eq0": int(wall_status_counts.get("eq0", 0)),
             "gt0": int(wall_status_counts.get("gt0", 0)),
@@ -1094,7 +1157,6 @@ def main():
             "0": n_F0,
             "1": n_F1,
             "unobserved": n_F_unobs,
-            "inconsistent_multi_point": n_F_inconsistent,
         },
         "F_eq_1_by_wind_grade": {
             "0": F1_by_grade["0"],
@@ -1102,24 +1164,36 @@ def main():
             "2": F1_by_grade["2"],
             "3": F1_by_grade["3"],
             "4": F1_by_grade["4"],
-            "inconsistent_multi_point": len(F1_inconsistent),
-            "inconsistent_multi_point_footprints": F1_inconsistent,
+            "inconsistent_multi_point": len(F1_inconsistent_wind),
+            "inconsistent_multi_point_footprints": F1_inconsistent_wind,
+            "grade_3_F_eq_1_split": {
+                "n": F1_by_grade["3"],
+                "major": len(F1_grade3_major),
+                "unknown": len(F1_grade3_unknown),
+                "major_buildings": F1_grade3_major,
+                "unknown_buildings": F1_grade3_unknown,
+            },
             "note": (
                 "Counts are buildings with F=1. Wind grades 0-4 are buildings "
                 "whose points agree on wind grade. Inconsistent multi-point "
-                "footprints are listed separately and are not assigned a single "
-                "wind grade."
+                "footprints with F=1 on every point are listed separately and "
+                "are not assigned a single wind grade. Missing or F-disagreeing "
+                "footprints are unobserved, not F=1."
             ),
         },
-        "F_inconsistent_multi_point_footprints": [
-            {
-                "footprint_uid": b["footprint_uid"],
-                "fulcrum_ids": b["fulcrum_ids"],
-                "wind_grades": b["wind_grades"],
-                "per_point": b["F_info"]["per_point"],
-            }
-            for b in Q_buildings if b["F_info"]["F"] == "inconsistent"
-        ],
+        "possible_U_F_only_samples": {
+            "n": len(possible_UF_only),
+            "note": (
+                "Identified without computing U and without reading Y-hat^s. "
+                "U_F,only requires F=1 and U_E=0. Buildings whose official Y is "
+                "major or destroyed cannot be U_F,only, because a satellite "
+                "no/minor call would also set U_E=1. The remaining F=1 cases "
+                "with no official 4-class Y are the grade-3 unknowns and any "
+                "F=1 wind-disagree footprint. These stay in Q."
+            ),
+            "buildings": possible_UF_only,
+        },
+        "F_unobserved_inconsistent_multi_point_footprints": F_unobs_footprints,
     }
 
     landing = {
@@ -1520,7 +1594,7 @@ Matching rule unchanged (frozen 10 m / IoU>0.5, no offset).
 - Grade 3 in wind Y: {landing['grade_3']['n_buildings_in_wind_Y']} buildings; {landing['grade_3']['major']} -> major (roof or wall structure damage >0); {landing['grade_3']['unknown']} -> unknown (listed in wind_grade3_unknown.csv).
 - Grade 4: {landing['grade_4']['n_buildings_with_a_grade4_point']} buildings in Q have a grade-4 point ({landing['grade_4']['n_in_wind_Y']} in wind Y, {landing['grade_4']['n_multi_point_wind_disagree_still_in_Q']} also have a disagreeing other-grade point). In wind Y, {landing['grade_4']['destroyed_in_wind_Y']} upgraded to destroyed under rule (2) (roof and wall structure both recorded as 100); {landing['grade_4']['major_in_wind_Y']} remain major (wind4_not_upgraded); {landing['grade_4']['unknown_in_wind_Y']} unknown. The 17-building upgrade list is wind_grade4_upgrade_list.csv. P7 conservative-mapping sensitivity is a separate output and does not replace these main counts.
 - Building-level wind labels in Q: no_damage={wind_label_counts['no_damage']}, minor={wind_label_counts['minor']}, major={wind_label_counts['major']}, destroyed={wind_label_counts['destroyed']}, unknown={wind_label_counts['unknown']}, excluded_inconsistent={wind_label_counts['excluded_inconsistent']}. Grade 2 maps to minor per the frozen protocol; there is no moderate class.
-- F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; wall distribution eq0/gt0/missing/inconsistent={F_observability['wall_structure_damage_distribution_in_Q']}. F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} inconsistent multi-point footprints.
+- F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; F=0: {F_observability['n_F_eq_0']}; unobserved: {F_observability['n_F_unobserved']} (missing {F_observability['n_F_unobserved_missing']}, inconsistent multi-point {F_observability['n_F_unobserved_inconsistent_multi_point']}, never F=0). F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} F=1 wind-disagree footprints. Grade-3 F=1 split major/unknown: {F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['major']}/{F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['unknown']}. Possible U_F,only samples (no U computed): {F_observability['possible_U_F_only_samples']['n']}.
 
 ## Old 16/14 vs 18/17 mismatch
 {unit_mismatch['explanation']}
@@ -1562,8 +1636,17 @@ P7 does not replace main counts. No U, no GPU, no downloads, matching rule uncha
         "F_observability_short": {
             "n_wall_structure_damage_non_missing": F_observability["n_wall_structure_damage_non_missing"],
             "n_F_eq_1": F_observability["n_F_eq_1"],
+            "n_F_eq_0": F_observability["n_F_eq_0"],
+            "n_F_unobserved": F_observability["n_F_unobserved"],
+            "n_F_unobserved_missing": F_observability["n_F_unobserved_missing"],
+            "n_F_unobserved_inconsistent_multi_point": F_observability["n_F_unobserved_inconsistent_multi_point"],
             "wall_structure_damage_distribution_in_Q": F_observability["wall_structure_damage_distribution_in_Q"],
             "F_eq_1_by_wind_grade": {k: F_observability["F_eq_1_by_wind_grade"][k] for k in ["0", "1", "2", "3", "4", "inconsistent_multi_point"]},
+            "grade_3_F_eq_1_split": {
+                "major": F_observability["F_eq_1_by_wind_grade"]["grade_3_F_eq_1_split"]["major"],
+                "unknown": F_observability["F_eq_1_by_wind_grade"]["grade_3_F_eq_1_split"]["unknown"],
+            },
+            "possible_U_F_only_n": F_observability["possible_U_F_only_samples"]["n"],
         },
         "edge_outside_tile_poly": summary["Q_building_level"]["edge_outside_tile_poly"],
         "count_unit_note_short": {
