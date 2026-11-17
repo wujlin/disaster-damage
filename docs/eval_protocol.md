@@ -25,11 +25,11 @@ These thresholds are frozen here, before any statistics are computed.
 
 ### Frozen definitions (to fill before first statistics run)
 
-The definitions in this section must be filled in and committed before the first statistics run. Later changes must be logged in the change log with the date and the reason.
+The definitions in this section must be filled in and committed before the first statistics run. Grade mapping, facade damage, and the footprint-matching rule below are frozen. Later changes must be logged in the change log with the date and the reason.
 
-- Damage-grade scale mapping between reference sources and the xBD 4-class scale: TODO
-- Exact definition of "facade damage" in the reference: TODO
-- Footprint-to-reference matching rule (IoU / distance threshold): TODO
+- Damage-grade scale mapping between reference sources and the xBD 4-class scale: field references from CAL FIRE DINS wildfire damage inspection records or FEMA damage assessment records map as: No Damage/Unaffected → xBD no-damage; Affected and Minor → minor-damage; Major → major-damage; Destroyed → destroyed. UAV references are labeled by humans to the xBD 4-class guide; no separate grade system.
+- Exact definition of "facade damage" in the reference: structural wall damage visible in the ground image — through-cracks; partial or full wall missing/collapsed; wall fire charring; OR flood waterline reaching first-floor interior height. Broken windows alone or surrounding debris alone do NOT count.
+- Footprint-to-reference matching rule (IoU / distance threshold): open-source footprint matched to an xBD polygon only if IoU ≥ 0.5. If two or more candidates have IoU ≥ 0.3, treat as ambiguous and drop. A ground photo must attach to exactly one building with localization error ≤ 30 m; otherwise drop. Counts of dropped footprints go in the statistics table.
 - Predefined "insufficient evidence" rules (no post-event image, cloud cover, low match confidence): TODO
 
 ## 2. Split
@@ -59,12 +59,11 @@ Report all of the following, stratified by disaster type and also by evidence so
 
 ## Fallback
 
-If the week-1 statistics give fewer than N conflict footprints with independent references, report descriptive results plus small-scale tests, and do not train a dedicated prediction head.
+N is frozen as follows: at least 300 conflict footprints with independent references in the test set, AND at least 3 events each with ≥30. If either fails, report descriptive results plus small-scale tests only; do not train a dedicated prediction head.
 
-- **N:** TODO
-
-N is a placeholder to be frozen before the statistics run. The intended scale is on the order of a few hundred. Fill in and commit the chosen N before the first statistics run. Later changes must be logged in the change log with the date and the reason.
+This cutoff was filled and committed before the first statistics run. Later changes must be logged in the change log with the date and the reason.
 
 ## Change log
 
 - 2026-11-17, protocol drafted from Algorithm Researcher's spec.
+- 2026-11-17, froze N, grade mapping, facade damage, and footprint-matching thresholds before the first statistics run.
