@@ -1,39 +1,82 @@
 """Training loop for the frozen DINOv2 ViT-B xBD probe.
 
-Importing this module does not start training.
+Importing this module does not start training. With no fold, the official
+train split is unchanged. A fold removes its holdout event from train, test,
+and hold before the first step.
 """
 
 from __future__ import annotations
 
 import copy
 import platform
+import random
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+from mvbridge.data.folds import (
+    apply_fold_data_paths,
+    assert_dataset_excludes_events,
+    bind_event_fold,
+    resolve_fold,
+)
 from mvbridge.data.xbd import XBDBuildingDataset
 from mvbridge.errors import ConfigError
+from mvbridge.engine.runtime import autocast_for, record_run_env
 from mvbridge.models.baseline import build_baseline, save_checkpoint
+from mvbridge.models.pathways import prepare_local_backbone
 
 
 def run_training(config: dict, logger, *, dry_run: bool = False, max_steps: int | None = None) -> dict:
+    if config.get("fold"):
+        apply_fold_data_paths(config, resolve_fold(config))
+        if config.get("output_dir"):
+            config["training_output_dir"] = config["output_dir"]
     if dry_run:
+        if config.get("fold"):
+            fold = resolve_fold(config)
+            logger.info(
+                "dry-run fold=%s seed=%s holdout_events=%s; xBD root not read, manifest not written",
+                fold.name,
+                fold.seed,
+                list(fold.holdout_events),
+            )
         return dry_run_forward(config, logger)
+    if config.get("output_dir"):
+        record_run_env(config["output_dir"], logger)
+    prepare_local_backbone(config, logger)
     data_cfg = config.get("data") or {}
     if not data_cfg.get("root"):
         raise ConfigError("data.root is required. Set it in the config or pass --set data.root=...")
+    fold = None
+    if config.get("fold"):
+        fold, _manifest = bind_event_fold(config, logger, data_filter="exclude-holdout")
+        data_cfg = config.get("data") or {}
     _check_image_size(config)
     dataset = XBDBuildingDataset(data_cfg, split="train")
+    if fold is not None:
+        assert_dataset_excludes_events(
+            dataset.examples,
+            fold.holdout_events,
+            fold_name=fold.name,
+            split="train",
+        )
     logger.info("official train buildings=%s class_counts=%s stats=%s", len(dataset), dataset.class_counts, dataset.stats)
     logger.info("first train image ids=%s", sorted(dataset.image_ids)[:5])
-    loader = DataLoader(
-        dataset,
-        batch_size=int(config.get("batch_size", 32)),
-        shuffle=True,
-        num_workers=int(config.get("num_workers", 0)),
-        drop_last=False,
-    )
+    loader_kwargs = {
+        "batch_size": int(config.get("batch_size", 32)),
+        "shuffle": True,
+        "num_workers": int(config.get("num_workers", 0)),
+        "drop_last": False,
+    }
+    if fold is not None:
+        set_seed(int(config["seed"]))
+        generator = torch.Generator()
+        generator.manual_seed(int(config["seed"]))
+        loader_kwargs["generator"] = generator
+    loader = DataLoader(dataset, **loader_kwargs)
     device = _device(config)
     logger.info("python=%s torch=%s device=%s", platform.python_version(), torch.__version__, device)
     _log_weight_policy(config, logger)
@@ -70,8 +113,9 @@ def run_training(config: dict, logger, *, dry_run: bool = False, max_steps: int 
             post = batch["post"].to(device)
             labels = batch["label"].to(device)
             optimizer.zero_grad(set_to_none=True)
-            logits = model(pre, post)
-            loss = criterion(logits, labels)
+            with autocast_for(config, device):
+                logits = model(pre, post)
+                loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
             batch_size = int(labels.shape[0])
@@ -135,6 +179,14 @@ def dry_run_forward(config: dict, logger) -> dict:
         "identity_trainable": identity_trainable,
         "damage_params": damage,
     }
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def _check_image_size(config: dict) -> None:

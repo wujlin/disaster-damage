@@ -78,6 +78,30 @@ The first audit reports only matched counts and drop reasons. Conflict is not de
 
 Buildings used to train the conflict signal, and their neighboring spatial blocks, never enter the test set.
 
+### Leave-one-reference-event-out damage heads
+
+The satellite damage head is DINOv2 ViT-B/14, seed 1. Conflict labels are computed later from that head. A reference event is an event with an independent ground reference. Each fold holds that event out of one damage head entirely.
+
+For a fold head, every image whose xBD `metadata.disaster` is the held-out event is removed from the official train, test, and hold splits used by that head. Membership is counted from those files by the exact disaster string. The count in each of those three splits is asserted to be 0. The removed images are a separate eval set for that head. They are not used as train or val, and they are not part of that head's in-fold test or hold. In this repository the hold split is named `holdout`. Some releases store it in a directory named `hold`; `data.split_dirs.holdout` points at that directory. There is no separate official val split.
+
+Folds are an appendable list in `configs/folds/event_folds.yaml`. Adding a later fold, such as `minus-hurricane-florence`, is a new list entry. Out-of-fold scoring reads that list. It does not hardcode fold names or a fixed number of reference folds.
+
+A building is scored only by a head that never saw its event. A Michael building (`hurricane-michael`) is routed to the fold that holds out Michael. A Palu building (`palu-tsunami`) is routed to the fold that holds out Palu. A head that saw the event does not produce \(\hat{Y}^{s}\) for that event. Eligible heads are not averaged. Events that no enabled reference fold holds out are not scored.
+
+Active reference folds, seed 1:
+
+- `minus-hurricane-michael` is the main fold. It holds out `hurricane-michael`. It is enabled now. xBD already contains those tiles.
+- `minus-palu-tsunami` holds out `palu-tsunami`. It is enabled, and the fold name trains and evaluates end to end.
+
+Pipeline checks, not Claim-2 evidence:
+
+- `minus-santa-rosa` holds out `santa-rosa-wildfire`. It is not the seed-1 main fold.
+- `minus-socal` holds out `socal-fire` (Woolsey/socal). Santa Rosa and Woolsey/socal are a wildfire pipeline check, not Claim-2 evidence.
+
+Fold name, held-out event, seed, manifest sha256, and checkpoint sha256 are recorded in `docs/folds.md`. The manifest sha256 is written when the fold is applied to a data root. Checkpoint sha256 stays TBD until that head is trained. No-fold training still uses the full official train split.
+
+Torch is not unified across hosts. Each train, score, and conflict-head evaluation writes `run_env.json` (Python, hostname, torch, CUDA, GPU names, NVIDIA driver). One fold's training and scoring must match that fingerprint. `--cross-env-check` writes a separate directory and is only a comparison. Agreement of \(\hat{Y}^{s}\) is judged per event. `no_effect` is true only when every event is at or above 99%. If any event is below 99%, Palu-fold results are annotated with the version difference. `minus-hurricane-michael-seed2` is a stability repeat and does not define \(U\).
+
 ## 3. Baselines
 
 Under the same hidden-photo setting (satellite imagery and footprint only; reference and any ground photo hidden), compare against:
@@ -270,3 +294,9 @@ P7 reports P2–P5 under the frozen mappings and under the conservative mappings
 - 2026-11-17, P4 changed from per-event tests to a pooled primary test (equal-weight mean of within-event paired AP differences, spatial-block bootstrap within events, one-sided 95% lower bound); single events report direction only. Reason: power simulation showed a single event with 30 conflicts has power 0.03-0.09 at a 0.10 AP gain. Changed before any U was computed. Fallback numbers, mappings, and matching rules are unchanged.
 - 2026-11-17, froze StEER wind 4: default major; destroyed only with an explicit collapse or no-longer-present field, or living-area wall structure failure with no intact roof structure remaining. Table 4 grade-4 shading is not a promotion rule. Source: Prevatt and Roueche 2020, Report 06-20, Table 4, printed p. 15. Frozen before any U was computed. Other mappings unchanged.
 - 2026-11-17, P4 pass criterion restricted to entropy and 1 - max p; the g0 comparison stays in P5 and is not bundled into P4. Added the conflict-count-weighted mean of within-event paired AP differences as a secondary report; the equal-weight mean remains primary. Changed before any U was computed. Mappings, fallback numbers, and matching rules are unchanged.
+- 2026-11-17, recorded the leave-one-reference-event-out rule for the satellite damage head (ViT-B, seed 1). The main fold is `minus-hurricane-michael`. `minus-palu-tsunami` is the second enabled reference fold. `minus-santa-rosa` and `minus-socal` are pipeline checks, not Claim-2 evidence. Santa Rosa and Woolsey/socal are a wildfire pipeline check. Manifest and checkpoint sha256 values for these heads stay TBD in `docs/folds.md` until a head is trained. This entry does not change grade mapping, matching thresholds, the 10 m DINS rule, or other frozen protocol numbers.
+- 2026-11-17, removed the torch release assertion. Jlin chose option (b): do not unify torch across hosts. Each train, score, and conflict-head evaluation records Python, hostname, torch, CUDA, GPU names, and the NVIDIA driver in `run_env.json`.
+- 2026-11-17, a fold's training, scoring, and conflict-head evaluation must use the same host, torch, CUDA, driver, and GPU names. A mismatch is refused unless `--cross-env-check` writes a separate directory.
+- 2026-11-17, cross-env agreement of \(\hat{Y}^{s}\) at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. Results stay stratified by event.
+- 2026-11-17, `minus-hurricane-michael-seed2` is a stability repeat (`role: seed-repeat`, `claim_evidence: false`, seed 2). It does not define \(U\). Default routing uses the seed-1 Michael head only.
+- 2026-11-17, removed the unused `torch_version` field. Cross-env `no_effect` is true only when every event's agreement is at least 99%; the summary lists per-event agreement and the events that fail. A prediction row must have `image_id` and `building_uid`, and those keys must be unique.

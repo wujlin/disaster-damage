@@ -35,6 +35,9 @@ class XBDLabelFile:
     capture_date: str | None
     buildings: list[BuildingLabel] = field(default_factory=list)
     bad_wkt: int = 0
+    # Exact metadata.disaster string, or "" when the JSON omits it.
+    # Fold membership uses this field and does not fall back to the filename.
+    disaster_metadata: str = ""
 
 
 def parse_wkt_pairs(wkt: str | None) -> list[tuple[float, float]]:
@@ -53,7 +56,10 @@ def load_label_file(path: Path) -> XBDLabelFile:
         parsed_id, parsed_when = image_id_from_filename(img_name)
         image_id = parsed_id or image_id
         when = parsed_when or when
-    disaster = metadata.get("disaster") or event_from_image_id(image_id)
+    raw_disaster = metadata.get("disaster")
+    disaster_metadata = "" if raw_disaster is None else str(raw_disaster).strip()
+    # disaster_raw keeps the previous fallback, including an unstripped metadata value.
+    disaster = raw_disaster or event_from_image_id(image_id)
     features = payload.get("features") or {}
     xy_by_uid = _index_features(features.get("xy") or [], geographic=False)
     geo_by_uid = _index_features(features.get("lng_lat") or [], geographic=True)
@@ -88,6 +94,7 @@ def load_label_file(path: Path) -> XBDLabelFile:
         capture_date=_blank(metadata.get("capture_date")),
         buildings=buildings,
         bad_wkt=bad_wkt,
+        disaster_metadata=disaster_metadata,
     )
 
 
