@@ -1,0 +1,129 @@
+{
+  "candidate": "Santa Rosa (Tubbs) / CAL FIRE DINS",
+  "pipeline_check_fold": true,
+  "note": "Santa Rosa is a pipeline check fold, not Claim-2 evidence. The protocol still requires at least 3 events.",
+  "created": "2026-11-17 19:43:13 Asia/Shanghai (UTC+8)",
+  "host": "dell-desktop",
+  "crs": "EPSG:32610",
+  "frozen_matcher": {
+    "path": "/home/jinlin/projects/disaster-damage-wt/audit-third-event-coverage/scripts/audit_dins_match.py",
+    "sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
+    "expected_sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
+    "sha256_ok": true,
+    "rule": "10 m point-to-polygon; inside exactly one footprint matches; >=2 ambiguous dropped; IoU>0.5 dedup; no offset"
+  },
+  "inputs": {
+    "dins_full": {
+      "path": "/mnt/data_hdd/datasets/cal_fire_dins/cal_fire_dins_tubbs_nuns_2017.geojson",
+      "sha256": "767fc67ba49b118264d86fde064d1945488f1d3106e6a39c184fae310db885a1"
+    },
+    "xbd_root": "/mnt/data_hdd/datasets/xbd",
+    "event": "santa-rosa-wildfire",
+    "tile_extent_source": "/mnt/data_hdd/datasets/cal_fire_dins/xbd_santa_rosa_wildfire_post_tile_extents.geojson",
+    "tile_extent_sha256": "e2ec739a381fbc31ab300a7ed74157838575e165d63d40eea8a855609805325f",
+    "n_tile_polygons": 368
+  },
+  "gate1_independent_reference": {
+    "verdict": "PASS (official CAL FIRE DINS field inspection points; official statewide CSV subset Tubbs+Nuns 2017)",
+    "source": "Official CAL FIRE DINS release POSTFIRE_MASTER_DATA_SHARE, downloaded 2026-11-17 17:44 Asia/Shanghai (see dataset README)."
+  },
+  "full_extent_distances_to_tiles_m": {
+    "n": 7577,
+    "n_inside": 5516,
+    "n_outside": 2061,
+    "min_m": 0.0,
+    "median_m": 0.0,
+    "p90_m": 13045.235124191557,
+    "p95_m": 17609.87236339845,
+    "max_m": 31923.198628516813,
+    "n_within_1km": 5702,
+    "n_within_5km": 5952,
+    "n_within_10km": 6574,
+    "n_within_26.1km": 7460
+  },
+  "inside_tile_count": 5516,
+  "outside_tile_count": 2061,
+  "incident_counts": {
+    "all": {
+      "Nuns": 1554,
+      "Tubbs": 6023
+    },
+    "inside_tile": {
+      "Tubbs": 5516
+    },
+    "outside_tile": {
+      "Nuns": 1554,
+      "Tubbs": 507
+    }
+  },
+  "outside_tile_reported_as_coverage_not_match_drops": true,
+  "n_skipped_bad_coords": 0,
+  "xbd_footprints": {
+    "n_post_label_files": 377,
+    "n_empty_or_unusable_files": 9,
+    "n_raw_footprints": 21955,
+    "n_bad_wkt": 0,
+    "n_non_building_skipped": 0
+  },
+  "dedupe": {
+    "method": "Union-find on projected polygons; IoU > 0.5 treated as the same building. Canonical geometry is the unary union (fallback: largest-area member). Canonical uid / tile / split / subtype come from the largest-area member (tie-break: split order train/test/hold, then tile name, uid).",
+    "iou_threshold": 0.5,
+    "n_raw": 21955,
+    "n_after": 21954,
+    "n_removed_by_dedupe": 1,
+    "n_merged_clusters": 1,
+    "n_iou_pairs_above_threshold": 1,
+    "max_cluster_size": 2,
+    "n_singleton_kept": 21953
+  },
+  "frozen_matcher_inside_tile_points": {
+    "n_points": 5516,
+    "unique_matches": 5113,
+    "inside": 4745,
+    "nearest_10m": 368,
+    "ambiguous_inside": 0,
+    "ambiguous_10m": 192,
+    "ambiguous_total": 192,
+    "no_footprint_10m": 211,
+    "status_counts": {
+      "inside": 4745,
+      "nearest_10m": 368,
+      "ambiguous_10m": 192,
+      "no_footprint_10m": 211
+    }
+  },
+  "dins_label_tally_mapping": "No Damage/Unaffected/Affected -> no-damage; Minor/Major/Destroyed as named; Inaccessible/empty -> unknown; anything else unmapped (no new filters)",
+  "dins_native_grades_inside_tile": {
+    "No Damage": 67,
+    "Destroyed": 5206,
+    "Affected": 158,
+    "Minor": 60,
+    "Major": 25
+  },
+  "dins_mapped_xbd_inside_tile": {
+    "no-damage": 225,
+    "minor": 60,
+    "major": 25,
+    "destroyed": 5206,
+    "unknown": 0,
+    "unmapped": 0
+  },
+  "dins_mapped_xbd_full_extent": {
+    "no-damage": 404,
+    "minor": 103,
+    "major": 47,
+    "destroyed": 7023,
+    "unknown": 0,
+    "unmapped": 0
+  },
+  "gate2_spatial_alignment": {
+    "inside_tile_points": 5516,
+    "unique_matches": 5113,
+    "ambiguous_dropped": 192,
+    "no_footprint_10m": 211,
+    "verdict": "PASS"
+  },
+  "gate3_can_be_evaluated_yet": true,
+  "gate3_note": "Not computed in this coverage audit (no U, no conflict labels). Unique matches exist, so a later Q pass is possible. Santa Rosa remains a pipeline-check fold.",
+  "blockers": []
+}

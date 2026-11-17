@@ -1,0 +1,64 @@
+{
+  "created": "2026-11-17 19:45:40 Asia/Shanghai (UTC+8)",
+  "timezone": "Asia/Shanghai (UTC+8)",
+  "host": "dell-desktop",
+  "cpu_only": true,
+  "no_imagery_download": true,
+  "no_predictions_or_U": true,
+  "frozen_matcher_sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
+  "msbfp2_provenance": "/mnt/data_hdd/audits/third_event_coverage_v0/maxar_michael/msbfp2_provenance.json",
+  "maxar_michael_note": "MSBFP2 / USA Structures footprint matching for Maxar Michael is already complete under maxar_michael/ and was not rerun. Provenance of the MSBFP2 extract is pinned in msbfp2_provenance.json.",
+  "four_candidate_table": [
+    {
+      "candidate": "Santa Rosa (Tubbs) / CAL FIRE DINS",
+      "gate1_independent_reference": "PASS (official CAL FIRE DINS field inspection points; official statewide CSV subset Tubbs+Nuns 2017)",
+      "gate2_inside_tile_points": 5516,
+      "gate2_unique_matches": 5113,
+      "gate2_verdict": "PASS",
+      "gate3_can_be_evaluated_yet": true,
+      "blockers": []
+    },
+    {
+      "candidate": "Hurricane Harvey / FEMA historical geospatial damage assessments",
+      "gate1_independent_reference": "FAIL — modeled flood-depth assessments (ASMT_TYPE=MOD), not field/UAV inspections",
+      "gate2_inside_tile_points": 8789,
+      "gate2_unique_matches": 7050,
+      "gate2_verdict": "COUNTS_ONLY — Gate 2 geometry can be measured, but Gate 1 failed so these matches are not eligible as independent-reference overlap",
+      "gate3_can_be_evaluated_yet": false,
+      "blockers": [
+        "All 156,099 Harvey records in the FEMA Historical Geospatial Damage Assessment Database have ASMT_TYPE=MOD (modeled) and DMG_TYPE=FL (flood). The service description states assessments were conducted 'either using high-resolution imagery or by means of geospatial modeling.' IMG_DATE is null for every Harvey record. This is not a field or UAV independent reference, so it cannot satisfy Gate 1 as frozen in the eval protocol (conflict ground truth must come from a non-satellite field/UAV source). Label tallies and matcher counts below are reported for coverage completeness only.",
+        "The former gis.fema.gov FEMA_Damage_Assessments service returns HTTP 404. disasters.geoplatform.gov Harvey DamageAssessments folders returned HTTP 500 on 2026-11-17. Live FEMA IA services on gis.fema.gov are zip/county/USNG aggregates, not building-level grades."
+      ]
+    },
+    {
+      "candidate": "Hurricane Florence / FEMA historical geospatial damage assessments",
+      "gate1_independent_reference": "NO COVERAGE — 0 Florence records in the FEMA Historical Geospatial Damage Assessment Database (the only building-level FEMA damage-assessment point layer found still online). Live FEMA IA services are zip/county/USNG aggregates. The former FEMA_Damage_Assessments service is 404; disasters.geoplatform.gov Florence folders returned HTTP 500 on 2026-11-17.",
+      "gate2_inside_tile_points": 0,
+      "gate2_unique_matches": 0,
+      "gate2_verdict": "NOT EVALUABLE — no Florence FEMA building-level points to align",
+      "gate3_can_be_evaluated_yet": false,
+      "blockers": [
+        "No Hurricane Florence features in FEMA Historical Geospatial Damage Assessment Database (count=0).",
+        "No substitute official FEMA field-inspection point layer is currently reachable."
+      ]
+    },
+    {
+      "candidate": "Hurricane Florence / tier-3 NWS Damage Assessment Toolkit",
+      "gate1_independent_reference": "NO USABLE 2018 HURRICANE FLORENCE COVERAGE in the public NWS DAT DamageViewer layer",
+      "gate2_inside_tile_points": 0,
+      "gate2_unique_matches": 0,
+      "gate2_verdict": "NOT EVALUABLE as Florence coverage — no 2018 Hurricane Florence DAT event to align; incidental ROSE points are reported but are not a Florence survey",
+      "gate3_can_be_evaluated_yet": false,
+      "blockers": [
+        "Public NWS DAT DamageViewer layer has no 2018 Hurricane Florence event (name search hits are later storms with Florence in the name).",
+        "Only 2 DAT points fall in a wide Carolinas box in 13 Sep–15 Oct 2018, both from a RAH 'ROSE' survey, not a hurricane damage assessment of Florence."
+      ]
+    }
+  ],
+  "paths": {
+    "santa_rosa_dins": "/mnt/data_hdd/audits/third_event_coverage_v0/santa_rosa_dins/summary.json",
+    "harvey_fema": "/mnt/data_hdd/audits/third_event_coverage_v0/harvey_fema/summary.json",
+    "florence_fema": "/mnt/data_hdd/audits/third_event_coverage_v0/florence_fema/summary.json",
+    "florence_nws_dat": "/mnt/data_hdd/audits/third_event_coverage_v0/florence_nws_dat/summary.json"
+  }
+}

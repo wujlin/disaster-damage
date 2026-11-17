@@ -1,0 +1,128 @@
+{
+  "candidate": "Hurricane Harvey / FEMA historical geospatial damage assessments",
+  "created": "2026-11-17 19:45:33 Asia/Shanghai (UTC+8)",
+  "host": "dell-desktop",
+  "crs": "EPSG:32615",
+  "frozen_matcher": {
+    "path": "/home/jinlin/projects/disaster-damage-wt/audit-third-event-coverage/scripts/audit_dins_match.py",
+    "sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
+    "expected_sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
+    "sha256_ok": true
+  },
+  "source_layer": {
+    "item_id": "e56e3d16fa144684bd532edbf298042c",
+    "title": "FEMA Historical Geospatial Damage Assessment Database",
+    "layer_url": "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/FEMA_Historical_Geospatial_Damage_Assessment_Database/FeatureServer/0",
+    "layer_id": 0,
+    "event_filter": "EVENT_NAME = '2017 Hurricane Harvey'",
+    "n_fetched": 156099,
+    "n_usable_points": 156099,
+    "n_skipped_bad_coords": 0,
+    "asmt_type_counts": {
+      "MOD": 156099
+    },
+    "self_description": "Geospatial damage assessments from past National Disaster events conducted either using high-resolution imagery or by means of geospatial modeling."
+  },
+  "gate1_independent_reference": {
+    "verdict": "FAIL — modeled flood-depth assessments (ASMT_TYPE=MOD), not field/UAV inspections"
+  },
+  "tile_extent_method": "post_label_feature_bbox (no raster pixels read)",
+  "n_post_tiles": 492,
+  "tile_envelope_lonlat_padded": {
+    "xmin": -95.69818878857157,
+    "ymin": 29.42338754520473,
+    "xmax": -95.31814915707278,
+    "ymax": 30.07859369109526
+  },
+  "full_extent_distances_to_tiles_m": {
+    "n": 156099,
+    "n_inside": 8789,
+    "n_outside": 147310,
+    "min_m": 0.0,
+    "median_m": 22795.28907260918,
+    "p90_m": 153312.96036735532,
+    "p95_m": 210919.8573375466,
+    "max_m": 267038.3103516736,
+    "n_within_1km": 15829,
+    "n_within_5km": 35701,
+    "n_within_10km": 51043,
+    "n_within_26.1km": 81110
+  },
+  "inside_tile_count": 8789,
+  "xbd_footprints": {
+    "n_post_label_files": 522,
+    "n_empty_or_unusable_files": 30,
+    "n_raw_footprints": 37955,
+    "n_bad_wkt": 0,
+    "n_non_building_skipped": 0
+  },
+  "dedupe": {
+    "method": "Union-find on projected polygons; IoU > 0.5 treated as the same building. Canonical geometry is the unary union (fallback: largest-area member). Canonical uid / tile / split / subtype come from the largest-area member (tie-break: split order train/test/hold, then tile name, uid).",
+    "iou_threshold": 0.5,
+    "n_raw": 37955,
+    "n_after": 37955,
+    "n_removed_by_dedupe": 0,
+    "n_merged_clusters": 0,
+    "n_iou_pairs_above_threshold": 0,
+    "max_cluster_size": 1,
+    "n_singleton_kept": 37955
+  },
+  "frozen_matcher_inside_tile_points": {
+    "n_points": 8789,
+    "unique_matches": 7050,
+    "inside": 5990,
+    "nearest_10m": 1060,
+    "ambiguous_inside": 0,
+    "ambiguous_10m": 936,
+    "ambiguous_total": 936,
+    "no_footprint_10m": 803,
+    "status_counts": {
+      "no_footprint_10m": 803,
+      "inside": 5990,
+      "nearest_10m": 1060,
+      "ambiguous_10m": 936
+    }
+  },
+  "fema_label_tally_mapping": "Frozen FEMA mapping in the repo (origin/main eval protocol): No Damage/Unaffected -> no-damage; Affected and Minor -> minor; Major -> major; Destroyed -> destroyed; UNK/empty -> unknown. Native codes NOD/AFF/MIN/MAJ/DES/UNK are mapped accordingly. No new filters.",
+  "fema_native_grades_all": {
+    "DES": 12598,
+    "MIN": 48119,
+    "AFF": 79334,
+    "MAJ": 16048
+  },
+  "fema_native_grades_inside_tile": {
+    "MIN": 3013,
+    "DES": 968,
+    "MAJ": 1257,
+    "AFF": 3551
+  },
+  "fema_mapped_xbd_all": {
+    "no-damage": 0,
+    "minor": 127453,
+    "major": 16048,
+    "destroyed": 12598,
+    "unknown": 0,
+    "unmapped": 0
+  },
+  "fema_mapped_xbd_inside_tile": {
+    "no-damage": 0,
+    "minor": 6564,
+    "major": 1257,
+    "destroyed": 968,
+    "unknown": 0,
+    "unmapped": 0
+  },
+  "gate2_spatial_alignment": {
+    "inside_tile_points": 8789,
+    "unique_matches": 7050,
+    "ambiguous_dropped": 936,
+    "no_footprint_10m": 803,
+    "verdict": "COUNTS_ONLY — Gate 2 geometry can be measured, but Gate 1 failed so these matches are not eligible as independent-reference overlap"
+  },
+  "gate3_can_be_evaluated_yet": false,
+  "gate3_note": "Not evaluable as a third-event independent-reference set while Gate 1 fails (modeled / non-field source).",
+  "blockers": [
+    "All 156,099 Harvey records in the FEMA Historical Geospatial Damage Assessment Database have ASMT_TYPE=MOD (modeled) and DMG_TYPE=FL (flood). The service description states assessments were conducted 'either using high-resolution imagery or by means of geospatial modeling.' IMG_DATE is null for every Harvey record. This is not a field or UAV independent reference, so it cannot satisfy Gate 1 as frozen in the eval protocol (conflict ground truth must come from a non-satellite field/UAV source). Label tallies and matcher counts below are reported for coverage completeness only.",
+    "The former gis.fema.gov FEMA_Damage_Assessments service returns HTTP 404. disasters.geoplatform.gov Harvey DamageAssessments folders returned HTTP 500 on 2026-11-17. Live FEMA IA services on gis.fema.gov are zip/county/USNG aggregates, not building-level grades."
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "candidate": "Hurricane Florence / FEMA historical geospatial damage assessments",
+  "created": "2026-11-17 19:45:35 Asia/Shanghai (UTC+8)",
+  "source_layer": {
+    "item_id": "e56e3d16fa144684bd532edbf298042c",
+    "layer_url": "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/FEMA_Historical_Geospatial_Damage_Assessment_Database/FeatureServer/0",
+    "event_filter": "EVENT_NAME LIKE '%Florence%'",
+    "count": 0,
+    "error": null
+  },
+  "related_context": {
+    "florence_steer_vs_xbd": {
+      "audit": "/mnt/data_hdd/audits/florence_xbd_overlap_v0/summary.json",
+      "gate2": "FAIL — 0 StEER on-site records inside any xBD hurricane-florence POST tile; nearest 26,080.9 m (26.1 km); median 34.4 km"
+    },
+    "note": "StEER is a separate reference (already failed Gate 2) and is not a FEMA source."
+  },
+  "n_post_tiles": 520,
+  "tile_envelope_lonlat_padded": {
+    "xmin": -79.10710066591695,
+    "ymin": 33.531702669258706,
+    "xmax": -77.78664028100447,
+    "ymax": 34.942578342885454
+  },
+  "tile_extent_method": "post_label_feature_bbox (no raster pixels read)",
+  "gate1_independent_reference": {
+    "verdict": "NO COVERAGE — 0 Florence records in the FEMA Historical Geospatial Damage Assessment Database (the only building-level FEMA damage-assessment point layer found still online). Live FEMA IA services are zip/county/USNG aggregates. The former FEMA_Damage_Assessments service is 404; disasters.geoplatform.gov Florence folders returned HTTP 500 on 2026-11-17."
+  },
+  "gate2_spatial_alignment": {
+    "inside_tile_points": 0,
+    "unique_matches": 0,
+    "verdict": "NOT EVALUABLE — no Florence FEMA building-level points to align"
+  },
+  "gate3_can_be_evaluated_yet": false,
+  "fema_label_tally": {},
+  "blockers": [
+    "No Hurricane Florence features in FEMA Historical Geospatial Damage Assessment Database (count=0).",
+    "No substitute official FEMA field-inspection point layer is currently reachable."
+  ]
+}
