@@ -25,14 +25,26 @@ Photo-less buildings without an independent reference are deployment targets onl
 
 These thresholds are frozen here, before any statistics are computed.
 
-The satellite-predicted damage grade used to compute a conflict comes from a frozen xBD baseline damage head (ViT-B, seed 1). That head's training never saw any test event. For events used to train the conflict or unreliability signal, use out-of-fold predictions. The checkpoint hash (sha256 of the checkpoint file) must be recorded in the change log before conflict labels are computed.
+For event \(e\), \(\hat{Y}^{s}\) comes only from the ViT-B seed-1 fold head that never saw \(e\). "Frozen seed 1" means a frozen recipe, seed, and that fold's weight sha256, not one shared head for every event. Write that sha256 in the change log before any \(U\) for \(e\) is computed. Official xBD labels are never \(Y\).
+
+Let \(\hat{p}\) be the full softmax of that same fold head. The frozen thresholds above are split and reported as follows.
+
+\(U_E = \mathbf{1}\{\hat{Y}^{s} \neq Y\}\).
+
+\(U_F = \mathbf{1}\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\} \land F = 1\}\).
+
+\(U = U_E \lor U_F\).
+
+\(U_{F,\mathrm{only}} = \mathbf{1}\{U_F = 1 \land U_E = 0\}\).
+
+\(U_E\), \(U_F\), \(U\), and \(U_{F,\mathrm{only}}\) are all reported.
 
 ### Frozen definitions (to fill before first statistics run)
 
 The definitions in this section must be filled in and committed before the first statistics run. Grade mapping, facade damage, the footprint-matching rule, and the insufficient-evidence rules below are frozen. Later changes must be logged in the change log with the date and the reason.
 
 - Damage-grade scale mapping between reference sources and the xBD 4-class scale. CAL FIRE DINS wildfire damage inspection records map as: No Damage / Unaffected → xBD no-damage; Affected → xBD no-damage; Minor → minor-damage; Major → major-damage; Destroyed → destroyed. FEMA damage assessment records map as: No Damage/Unaffected → xBD no-damage; Affected and Minor → minor-damage; Major → major-damage; Destroyed → destroyed. UAV references are labeled by humans to the xBD 4-class guide; no separate grade system.
-- Exact definition of "facade damage" in the reference: structural wall damage visible in the ground image — through-cracks; partial or full wall missing/collapsed; wall fire charring; OR flood waterline reaching first-floor interior height. Broken windows alone or surrounding debris alone do NOT count.
+- Exact definition of "facade damage" in the reference: structural wall damage visible in the ground image — through-cracks; partial or full wall missing/collapsed; wall fire charring; OR flood waterline reaching first-floor interior height. Broken windows alone or surrounding debris alone do NOT count. \(F\) is coded from component fields, never from the ordinal grade.
 - Footprint-to-reference matching rule (IoU / distance threshold): open-source footprint matched to an xBD polygon only if IoU ≥ 0.5. A match is ambiguous, and is dropped, only when two or more candidates have IoU ≥ 0.3, or the best/second-best match score ratio is < 1.2. The 30 m value is only the upper bound on localization error: a ground photo is dropped when that error is greater than 30 m. Counts of dropped footprints go in the statistics table.
 - Predefined insufficient-evidence rules. These rules assign coverage categories and must never use model uncertainty, entropy, or confidence.
 
@@ -70,17 +82,25 @@ Under the same hidden-photo setting (satellite imagery and footprint only; refer
 
 - satellite damage head entropy
 - satellite damage head max probability (`1 - max prob`)
+- a capacity-controlled baseline \(g_0(\hat{p})\) that sees only the full softmax (and any shared deployment covariates \(W\))
 - random selection
 
-The method must beat these baselines under that setting.
+The method must beat entropy, \(1 - \max p\), and \(g_0\) under that setting.
+
+Public DINOv3 ViT-L/16 SAT-493M weights (timm `vit_large_patch16_dinov3.sat493m`) are reported as a strong satellite-only reference row, evaluated as frozen features with the same probe as the other rows. This row is not the matched control for Claim 1. That control remains continued pretraining on the same SAGIN satellite images, with the same steps and augmentations, and only the cross-view term removed. The SAT-493M weight-file sha256 is TBD and is recorded when the file is copied. The conflict-label head stays the frozen ViT-B seed 1 head. SAT-493M is only a compared method and is never used to define labels.
 
 ## 4. Metrics
 
-Report all of the following, stratified by disaster type only. Photos are hidden at inference. Coverage classes are reported as descriptive statistics, not as a metric stratification.
+AP is primary. Compute AP, PR-AUC, precision@K, and ECE on every scorable held-out footprint, never on the conflict subset alone. Photos are hidden at inference. Coverage classes are reported as descriptive statistics, not as a metric stratification. Report these metrics for \(U_E\), \(U_F\), \(U\), and \(U_{F,\mathrm{only}}\).
 
+- AP (primary)
 - PR-AUC
 - precision@K for K = 1%, 5%, and 10%
 - ECE (expected calibration error, the gap between confidence and actual accuracy)
+
+Compare methods only as within-event paired differences. The falsifiers below are one-sided 95% lower bounds from a spatial-block paired bootstrap.
+
+Cancel precision@1% when \(N_e = 30\), or when fewer than one item is expected. \(N_e\) is the number of scorable held-out footprints in event \(e\).
 
 ## Fallback
 
@@ -90,71 +110,136 @@ This cutoff was filled and committed before the first statistics run. Later chan
 
 ## Pre-registered claims and theoretical motivation
 
-Training may use satellite, UAV, and ground views. Deployment and evaluation inference use only the post-event satellite image plus the footprint. The claim under test is cross-modal and cross-event transfer of a satellite residual that predicts an unreliable satellite judgment. Fusion accuracy is outside this protocol.
+Training may use satellite, UAV, and ground views. Deployment and evaluation inference use only the post-event satellite image plus the footprint. Fusion accuracy is outside this protocol. The frozen fallback is unchanged: at least 300 conflict footprints, at least 3 events, and at least 30 conflicts per event.
 
 ### Notation
 
-\(X^{s}\) is the satellite image together with the footprint. \(X^{g}\) is the ground or UAV view. \(Y\) is the independent non-satellite damage grade. \(F\) is the frozen facade-damage indicator. The frozen satellite judgment is \(\hat{Y}^{s} = h_{\mathrm{frozen}}(X^{s})\), the xBD baseline damage head (ViT-B, seed 1) defined above. The conflict label is
+\(X^{s}\) is the satellite image together with the footprint. \(X^{g}\) is the ground or UAV view. \(Y\) is the independent non-satellite damage grade. Official xBD labels are never \(Y\). \(F\) is the frozen facade-damage indicator, coded from component fields, never from the ordinal grade. For event \(e\), \(\hat{Y}^{s}\) and the full softmax \(\hat{p}\) come only from the ViT-B seed-1 fold head that never saw \(e\). \(H\) is the entropy of \(\hat{p}\). \(U_E\), \(U_F\), \(U\), and \(U_{F,\mathrm{only}}\) are the labels in the Label section. The target on the scorable set is \(\eta(x^{s}) = P(U = 1 \mid X^{s} = x^{s})\). \(U\) is observable only on the scorable set \(Q\) (an independent reference and sufficient satellite evidence). The deployment set is \(D\): sufficient satellite evidence and no \(X^{g}\). \(W\) is any shared deployment covariates. \(g(X^{s})\) is a predictor of \(U\) read from \(X^{s}\). \(g_0(\hat{p})\) is the capacity-controlled baseline that sees only the full softmax (and any shared deployment covariates \(W\)). \(\phi(X^{s})\) is a satellite representation. \(\phi_{\mathrm{cross}}\) is the representation after cross-view pretraining. \(\phi_{\mathrm{sat}}\) is the satellite representation compared with \(\phi_{\mathrm{cross}}\) in P2 and P3. The SAT-493M row in Baselines is a frozen-feature reference row only. It is not \(\phi_{\mathrm{sat}}\), and it is never used to define labels. \(m_0\) is defined under P1.
 
-\(U = \mathbf{1}\{\hat{Y}^{s} \neq Y\} \lor \mathbf{1}\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\} \land F = 1\}\).
+### Assumptions
 
-The target is \(\eta(x^{s}) = P(U = 1 \mid X^{s} = x^{s})\). \(U\) is observable only on the scorable set \(Q\) (an independent reference and sufficient satellite evidence). The deployment set is \(D\): sufficient satellite evidence and no \(X^{g}\). \(Z^{s}_{\theta}\) is the satellite representation produced by encoder parameters \(\theta\). \(\theta_{0}\) is the off-the-shelf DINOv2 initialization. \(\theta_{1}\) is the same architecture after SAGIN multi-view continued pretraining. \(g(X^{s})\) is a predictor of \(U\) read from \(X^{s}\).
+Assumption A is conditioned on the full softmax \(\hat{p}\). It is split into A-data and A-repr. A-repr does not imply beating entropy.
 
-### Claim 1 (cross-modal transfer)
+- **A-data.** \(I(X^{s}; U \mid \hat{p}) > 0\).
+- **A-repr.** \(I(\phi(X^{s}); U \mid \hat{p}) > 0\). A-repr does not imply beating entropy.
 
-Under the hidden-photo protocol, a satellite encoder after SAGIN multi-view continued pretraining predicts unreliability better than the same architecture from the off-the-shelf DINOv2 initialization: \(I(Z^{s}_{\theta_{1}}; U) > I(Z^{s}_{\theta_{0}}; U)\). The gain must concentrate on the facade-conflict subset \(\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\}, F = 1\}\) and must beat the entropy and \(1 - \max p\) baselines. Any failure falsifies Claim 1.
+Assumption B is the Q–D overlap form. Claim 2 is restricted to the overlapping support of \(Q\) and \(D\). Covariate shift is allowed. Concept shift is not identifiable from unlabeled target images.
 
-Required control. A satellite-only continued-pretraining encoder uses exactly the same SAGIN satellite images, the same compute and steps, and the same augmentations, with only the cross-view term removed. Claim 1 is attributed to multi-view transfer only if the SAGIN multi-view encoder beats this control.
+Assumption C is the transport form, with P6 diagnostics. Selection ignorability is not a default. It is replaced by a transport assumption plus truncated IPW and Gamma sensitivity bounds (e.g. 1, 2, 4).
 
-Public DINOv3 ViT-L/16 SAT-493M weights (timm `vit_large_patch16_dinov3.sat493m`) are reported as a strong satellite-only reference row, evaluated as frozen features with the same probe as the other rows. This row is not the matched control for Claim 1. That control remains continued pretraining on the same SAGIN satellite images, with the same steps and augmentations, and only the cross-view term removed. The SAT-493M weight-file sha256 is TBD and is recorded when the file is copied. The conflict-label head stays the frozen ViT-B seed 1 head. SAT-493M is only a compared method and is never used to define labels.
+Assumption D is the testable form, plus a shuffled-pair control. A DINO-style identity alignment may erase damage state as a nuisance. Identity and geometry features therefore stay separate from a damage residual pathway, and the invariance term must not be too strong. The testable check is that cross-view distance does not drop while the facade probe worsens. If pretraining starts, add a shuffled-pair control: the satellite–ground pairing is shuffled, so the control does not keep true cross-view pairs.
 
-### Claim 2 (cross-event transfer)
+### Claim 1
 
-\(g(X^{s})\) learned on some events with privileged references beats the uncertainty baselines on held-out events. The primary test is a within-disaster-type event holdout. The secondary, harder test is a cross-disaster-type holdout. If the event holdout fails and the within-event spatial-block holdout succeeds, Claim 2 is falsified and only within-event generalization is claimed.
+Claim 1 is better extraction of satellite-visible facade-damage correlates shared with the ground view.
 
-### Identification
+The information-processing inequality is \(I(\phi(X^{s}); F) \le I(X^{s}; F)\).
 
-\(\eta\) is identifiable from the privileged samples if and only if, on the satellite-sufficient slice, \(U\) is independent of membership in \(Q\) given \(X^{s}\) (selection ignorability). This is Assumption C. It is recorded here and is not treated as holding by default.
+If pretraining starts, add a shuffled-pair control.
 
-### Information decomposition
+The matched control named in the SAT-493M baseline paragraph remains continued pretraining on the same SAGIN satellite images, with the same steps and augmentations, and only the cross-view term removed. SAT-493M stays a frozen-feature reference row only.
 
-Information about \(Y\) splits into a redundant part (roof collapse or a large burn visible in both views), a satellite-unique part, and a ground-unique part \(I(X^{g}; Y \mid X^{s})\). Facade conflicts arise mainly from the ground-unique part. They are predictable from \(X^{s}\) only if a satellite residual \(W(X^{s})\) exists with \(I(W; U) > 0\).
+### Claim 2
 
-Assumption A, which is testable: \(I(X^{s}; U \mid \sigma(\hat{Y}^{s}, c(h_{\mathrm{frozen}}(X^{s})))) > 0\), where \(c\) is the entropy or the maximum probability of the frozen head, and \(\sigma\) is the sigma-algebra those statistics generate. If Assumption A fails, no satellite-only method should beat the uncertainty baselines on facade conflicts.
-
-### Why Claim 1 may hold
-
-Claim 1 is the inequality \(I(Z^{s}_{\theta_{1}}; U) > I(Z^{s}_{\theta_{0}}; U)\), and it is expected to be more pronounced on \(\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\}, F = 1\}\). The mechanism is that the multi-view objective forces the satellite encoder to retain factors that are legible in \(X^{g}\) and weak in \(X^{s}\).
-
-Risk, Assumption D. A DINO-style identity alignment may erase damage state as a nuisance. Identity and geometry features therefore stay separate from a damage residual pathway, and the invariance term must not be too strong.
-
-### Shift levels for Claim 2
-
-Three shift levels are distinguished.
-
-- Covariate shift: \(P_{e}(X^{s})\) changes across events while \(P(U \mid X^{s})\) stays invariant. Ranking transfers where the supports overlap.
-- Prior shift: \(P_{e}(U)\) changes. ECE degrades. PR-AUC and precision@K may still hold.
-- Concept shift: \(P_{e}(U \mid X^{s})\) changes, as when flood, fire, and earthquake physics differ.
-
-Assumption B: \(P(U \mid X^{s}, \tau)\) is invariant within a disaster type \(\tau\), and only within that type.
+Claim 2 is restricted to the overlapping support of \(Q\) and \(D\). Covariate shift is allowed. Concept shift is not identifiable from unlabeled target images. The main Claim 2 text is restricted to that overlap. Any statement about \(D\) uses truncated IPW and Gamma sensitivity bounds (e.g. 1, 2, 4). The event-level holdout and the within-event spatial-block holdout in the Split section do not extend Claim 2 off that overlap.
 
 ### Failure modes
 
-- Assumption A fails: facade-subset PR-AUC is near random, and there is no win over the uncertainty baselines.
-- Assumption B fails: event holdout drops to the baselines while the spatial-block holdout stays good (an event shortcut).
-- Assumption C fails: performance is good on \(Q\) and worse in calibration or ranking on low photo-density slices. \(P(X^{s}, \hat{Y}^{s} \mid Q)\) differs from the same joint on satellite-only buildings.
-- Assumption D fails: cross-view distance drops while the facade probe worsens.
+- A-data fails when \(I(X^{s}; U \mid \hat{p})\) is not greater than 0.
+- A-repr does not imply beating entropy.
+- Assumption B fails when a Claim 2 statement leaves the overlapping support of \(Q\) and \(D\), or when concept shift is treated as identified from unlabeled target images.
+- Assumption C fails when selection ignorability is used as a default, or when a statement about \(D\) omits truncated IPW and Gamma sensitivity bounds (e.g. 1, 2, 4). P6 is the overlap diagnostics.
+- Assumption D fails when cross-view distance drops while the facade probe worsens. If pretraining starts, a missing shuffled-pair control means the pretraining comparison is not interpretable under D.
 
 ### Pre-registered predictions
 
-These predictions are fixed before the first statistics run. They are not to be changed after results are seen.
+P1–P6 are replaced by P1–P7. These predictions are fixed before the first statistics run. They are not to be changed after results are seen. The falsifiers are one-sided 95% lower bounds from a spatial-block paired bootstrap. For a prediction that is a positive within-event paired difference, the lower bound not greater than 0 fails to support that prediction.
 
-- **P1.** Freeze the median entropy of non-conflict samples from the training events. Report the fraction of test conflicts whose entropy is below that median. If that fraction is not significantly above 50%, conflicts are mostly high-uncertainty cases and both claims have little room. P1 is the cheapest check and is run first.
-- **P2.** The SAGIN gain comes mainly from the facade-conflict subset, not from roof-visible major-damage or destroyed disagreements.
-- **P3.** Under hidden photos and event holdout, the method must beat both entropy and \(1 - \max p\). This is necessary for both claims.
-- **P4.** Within-type event transfer is stronger than cross-type transfer. If only the former holds, the reported claim is type-conditional transfer.
-- **P5.** Coverage bias is an identification threat, not a contribution. Compare \(P(X^{s}, \hat{Y}^{s}, \mathrm{grade})\) between buildings with a photo and buildings without one, and pre-register inverse-propensity or overlap-reweighting robustness checks.
-- **P6.** If continued pretraining increases view invariance and lowers the facade probe, weaken the invariance term or add the damage residual head rather than increasing alignment.
+- **P1.** Freeze the median entropy of non-conflict samples (\(U = 0\)) from the training events. That frozen median is \(m_0\). \(q = P(H < m_0 \mid U = 1, Q)\). The one-sided 95% lower bound on \(q\) not greater than 0.5 fails to support the overconfident-conflict narrative.
+- **P2.** AP difference of \(\phi_{\mathrm{cross}}\) versus \(\phi_{\mathrm{sat}}\) on \(F\), restricted to no/minor (\(\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\}\)). The slice is scorable footprints in that grade band, never the conflict subset alone.
+- **P3.** AP difference of \(\phi_{\mathrm{cross}}\) versus \(\phi_{\mathrm{sat}}\) on \(U\), on every scorable held-out footprint.
+- **P4.** Beats entropy and \(1 - \max p\), per qualified event, as within-event paired AP differences. A qualified event is a held-out event with at least 30 conflict footprints, the per-event bar already frozen in Fallback.
+- **P5.** \(g\) versus \(g_0\), as a within-event paired AP difference. The method must beat \(g_0\).
+- **P6.** Overlap diagnostics for the transport form of Assumption C. P6 does not add a numeric overlap cutoff.
+- **P7.** Frozen versus conservative mapping sensitivity. Report P2–P5 under the frozen mapping and under the conservative mappings in Source mapping.
+
+## Source mapping
+
+The frozen CAL FIRE DINS and FEMA mapping sentences in the Label section stay in force. FEMA mapping stays frozen. DINS Affected → no stays frozen (no rollback). Mappings in this section that are not those frozen sentences are the approved StEER package, the Palu non-mapping, or a pre-registered sensitivity. They are not a rollback.
+
+### StEER wind
+
+StEER wind is frozen as follows. Code \(F\) from component fields, never from the grade.
+
+- 0 → no
+- 1 → minor (does not satisfy \(F\))
+- 2 → minor, never major
+- 3 → major only with recorded partial roof or wall structural failure, otherwise minor or unknown
+- 4 is not automatically destroyed
+- −1 is excluded from wind \(Y\) and is not no-damage
+
+Source for the component-field tables: Roueche, Nakayama, Kijewski-Correa, Prevatt, 2024, Natural Hazards Review 25(2):04023060, printed page 04023060-6, Tables 3 and 4. Which cells of WiSPD Table 3 are bold is unverified (footnote a depends on bold criteria). Do not cite those bold cells as if read.
+
+### Surge
+
+Surge 0–6 are damage states, not feet. Do not map feet, regional 8–12 ft inundation, or `first_floor_elevation_feet` to \(Y\). Surge 3 is not \(F\). 5 → major. 6 → destroyed. This package does not freeze a grade for any other surge code.
+
+StEER Hurricane Michael EARR, printed p. 3: 8–12 ft is a regional hazard observation. Do not back-fit the 2023 Unified App Handbook onto the 2018 Michael field protocol.
+
+### Palu
+
+Palu is not one-to-one and is not frozen until Paulik et al. (2019) is in hand. DS1 → unknown or excluded from a strict crosswalk. DS2/DS3 only as exploratory sensitivity.
+
+Paulik et al., 2019, Pure and Applied Geophysics 176:3305–3321, doi:10.1007/s00024-019-02254-9. Full text not obtained.
+
+Secondary Palu only: Lahcene et al., 2021, NHESS 21:2315–2316, Table 1; Jalayer et al., 2023, NHESS 23:914, Table 2. Jalayer's phrase "complete structural collapse" is Jalayer's wording, not a verified Paulik definition.
+
+### DINS sensitivity and FEMA
+
+DINS Affected → no stays frozen (no rollback). It is flagged as conflicting with the xBD no-damage wording on shingle damage, quoted under Gupta Figure 3 below. Pre-registered sensitivity: Affected → minor and Affected → unknown. Those two sensitivities are not the frozen map. FEMA mapping stays frozen.
+
+DINS methodological table: Camp Incident Damage Inspection Report, NIST-hosted, methodological table on Page 4 of 54. FEMA categories as used in the frozen sentence: 2016 Damage Assessment Category Guidelines, Florida Division of Emergency Management-hosted 2-page PDF, pp. 1–2. Official fema.gov Damage Assessment Operations Manual (2016-04-05) page numbers were not verified.
+
+### Official xBD wording
+
+Gupta et al., 2019, Creating xBD, CVPR Workshops, conference proceedings pp. 12–13, Figure 3. The body on p. 12 also calls it Table 3. Figure 3 is the Joint Damage Scale on a four-level scheme. The body states: "As such, this scale is not meant as an authoritative damage assessment rating, but it does provide the first attempt to create a unified assessment scale for building damage in satellite imagery across multiple disaster types, structure categories, and geographical location."
+
+Figure 3 descriptions:
+
+- 0 (no damage): Undisturbed. No sign of water, structural or shingle damage, or burn marks.
+- 1 (minor damage): Building partially burnt, water surrounding structure, volcanic flow nearby, roof elements missing, or visible cracks.
+- 2 (major damage): Partial wall or roof collapse, encroaching volcanic flow, or surrounded by water/mud.
+- 3 (destroyed): Scorched, completely collapsed, partially/completely covered with water/mud, or otherwise no longer present.
+
+Official xBD labels are never \(Y\). The no-damage line is the shingle-damage wording that conflicts with frozen DINS Affected → no. The conflict is flagged. The frozen map is not rolled back.
+
+### Unverified, not cited as read
+
+The following were not read for this revision. Do not cite them as if read.
+
+- FAST Handbook v1.2 (2019)
+- Vickery et al. (2006)
+- Friedland 2009 dissertation
+- Friedland and Levitan 2009 conference PDF page numbers
+- official fema.gov Damage Assessment Operations Manual (2016-04-05) page numbers
+- which cells of WiSPD Table 3 are bold (footnote a depends on bold criteria)
+- a standalone official DINS "No Damage" definition
+
+## Construct validity and pre-registered remedies
+
+The weakest point is construct validity of \(Y\) and of \(U\), not the model architecture. xBD is a satellite proxy scale and "is not meant as an authoritative damage assessment rating" (Gupta et al., 2019, CVPR Workshops, conference proceedings pp. 12–13, Figure 3; the body on p. 12 also calls it Table 3).
+
+Remedies, in order:
+
+1. Indicator-blind grade adjudication.
+2. Retain unknown.
+3. Report rater agreement.
+4. Code \(F\) from component fields, never from the ordinal grade.
+5. Report P2–P5 under frozen and conservative mappings (P7).
+6. Do not interpret a win as satellite unreliability if it appears only under a controversial one-to-one mapping.
+7. Restrict main Claim 2 text to the overlapping support of \(Q\) and \(D\), with truncated IPW and Gamma bounds for any statement about \(D\).
+
+P7 reports P2–P5 under the frozen mappings and under the conservative mappings. The frozen mappings are the Label-section DINS and FEMA sentences and the frozen StEER wind rules. The conservative mappings are the pre-registered sensitivities: DINS Affected → minor and Affected → unknown. Palu is not one-to-one and is not frozen. DS1 → unknown or excluded from a strict crosswalk. DS2/DS3 only as exploratory sensitivity. Do not interpret a win as satellite unreliability if it appears only under a controversial one-to-one mapping. Palu remains unfrozen.
 
 ## Change log
 
@@ -162,10 +247,11 @@ These predictions are fixed before the first statistics run. They are not to be 
 - 2026-11-17, froze N, grade mapping, facade damage, and footprint-matching thresholds before the first statistics run.
 - 2026-11-17, froze insufficient-evidence rules and coverage classes; metrics stratified by disaster type only.
 - 2026-11-17, restricted the scorable set to footprints with an independent reference and sufficient satellite evidence, so cloud or no-data cannot create free unreliable labels; froze the conflict-label head as the xBD baseline damage head (ViT-B, seed 1), trained without any test event, with out-of-fold predictions for events used to train the conflict signal; matching ambiguity is only two or more candidates with IoU ≥ 0.3, or a best/second-best score ratio < 1.2, and 30 m is the localization-error limit only.
-- Checkpoint hash (sha256 of the frozen xBD baseline checkpoint file): TBD, to be filled before conflict labels are computed.
+- Checkpoint hash (sha256 of the frozen xBD baseline checkpoint file): TBD, to be filled before conflict labels are computed. After this revision the hash is recorded per fold head, for the head that never saw the event being labeled.
 - 2026-11-17, pre-registered transfer claims, the satellite-only continued-pretraining control, and predictions P1–P6.
 - 2026-11-17, froze the CAL FIRE DINS point-to-footprint matching rule, including the 10 m radius.
 - Official CAL FIRE DINS release (POSTFIRE_MASTER_DATA_SHARE, https://gis.data.cnra.ca.gov/datasets/CALFIRE-Forestry::cal-fire-damage-inspection-dins-data), downloaded 2026-11-17 17:44 Asia/Shanghai (UTC+8); statewide CSV 132,522 rows, sha256 af01e965145420695504db3385782c6879dee00dc66586feec8a6bfc0938404f. Tubbs + Nuns 2017: 7,577 points (Tubbs 6,023, Nuns 1,554). Inside xBD santa-rosa-wildfire tile extents: 5,516 (all Tubbs); outside: 2,061 (all 1,554 Nuns and 507 Tubbs), reported as coverage, not matching drops. DINS grades of the 5,516 in-extent points: Destroyed 5,206, Affected 158, Minor 60, No Damage 67, Major 25. Santa Rosa is a pipeline check only; the protocol still requires at least 3 events, and Claim 2 cannot rest on this event alone.
 - 2026-11-17, clarified DINS in-footprint precedence: a point inside exactly one footprint matches even if other footprints lie within 10 m. The 10 m rule applies only to points outside every footprint, and distance is the shortest point-to-polygon distance, not the distance to the centroid.
 - 2026-11-17, added public DINOv3 ViT-L/16 SAT-493M weights (timm `vit_large_patch16_dinov3.sat493m`) as a strong satellite-only reference row, evaluated as frozen features with the same probe as the other rows. It is not the matched control for Claim 1, which remains continued pretraining on the same SAGIN satellite images with the same steps and augmentations and only the cross-view term removed. Weight file sha256: TBD, recorded when copied. The conflict-label head stays the frozen ViT-B seed 1 head; SAT-493M is only a compared method and is never used to define labels.
 - 2026-11-17, factual correction of the frozen CAL FIRE DINS grade mapping, made against the official DINS grade definition, before any conflict labels are computed. It is not a post-hoc change after seeing conflict rates. CAL FIRE DINS Affected is 1–9% cosmetic or interior damage; the building remains habitable (roof-tile replacement, peeling paint, melted siding, broken windows, sinks, or accessory decks/carports). That does not meet this protocol's frozen facade-damage definition (structural wall damage or wall fire charring; broken windows alone do not count). Mapping Affected to minor-damage would invent unreliable labels. Santa Rosa matched pairs already show 127 of 146 Affected points labeled no-damage in official xBD, which is consistent with this definition, but the change is based on the source definition, not on that table. Source: NIST Camp Fire DINS standard write-up, https://www.nist.gov/system/files/documents/2020/11/16/2018%20Camp%20Incident%20DINS%20Final%20Report.pdf. Jlin approved this correction on 2026-11-17. Multi-DINS-point consistency on one footprint must use this mapping once it is merged (Affected and No Damage on the same footprint now agree). FEMA damage assessment records keep the previous mapping.
+- 2026-11-17, Jlin approved three protocol packages. This entry writes them into this file only, before any \(U\) is computed. (1) Theory and evaluation corrections. Assumption A is conditioned on the full softmax \(\hat{p}\) and split into A-data and A-repr; A-repr does not imply beating entropy. Add a capacity-controlled baseline \(g_0(\hat{p})\) that sees only the full softmax (and any shared deployment covariates \(W\)). Split \(U\) into \(U_E\) and \(U_F\) and also report \(U_{F,\mathrm{only}}\). Claim 1 is better extraction of satellite-visible facade-damage correlates shared with the ground view, with \(I(\phi(X^{s}); F) \le I(X^{s}; F)\). If pretraining starts, add a shuffled-pair control. Claim 2 is restricted to the overlapping support of \(Q\) and \(D\). Covariate shift is allowed. Concept shift is not identifiable from unlabeled target images. Selection ignorability is not a default; it is replaced by a transport assumption plus truncated IPW and Gamma sensitivity bounds (e.g. 1, 2, 4). Compute AP / PR-AUC / precision@K / ECE on every scorable held-out footprint, never on the conflict subset alone. Compare methods only as within-event paired differences. Cancel precision@1% when \(N_e = 30\), or when fewer than one item is expected. P1–P6 are replaced by P1–P7 with one-sided 95% lower-bound falsifiers (spatial-block paired bootstrap). For event \(e\), \(\hat{Y}^{s}\) comes only from the ViT-B seed-1 fold head that never saw \(e\). "Frozen seed 1" means a frozen recipe, seed, and that fold's weight sha256, not one shared head for every event. (2) StEER / Palu / DINS sensitivity. StEER wind: 0 → no; 1 → minor (does not satisfy \(F\)); 2 → minor, never major; 3 → major only with recorded partial roof or wall structural failure, otherwise minor or unknown; 4 is not automatically destroyed; −1 is excluded from wind \(Y\) and is not no-damage. Code \(F\) from component fields, never from the grade. Surge 0–6 are damage states, not feet. Do not map feet, regional 8–12 ft inundation, or first_floor_elevation_feet to \(Y\). Surge 3 is not \(F\); 5 → major; 6 → destroyed. Palu is not one-to-one and is not frozen until Paulik et al. (2019) is in hand. DS1 → unknown or excluded from a strict crosswalk; DS2/DS3 only as exploratory sensitivity. DINS Affected → no stays frozen (no rollback), flagged as conflicting with xBD no-damage wording on shingle damage, with pre-registered sensitivity Affected → minor and Affected → unknown. FEMA mapping stays frozen. (3) Construct-validity remedies. The weakest point is construct validity of \(Y\) and of \(U\), not the model architecture. xBD is a satellite proxy scale and "is not meant as an authoritative damage assessment rating" (Gupta et al., 2019, CVPR Workshops pp. 12–13, Figure 3). Remedies, in order: indicator-blind grade adjudication; retain unknown; report rater agreement; code \(F\) from component fields; report P2–P5 under frozen and conservative mappings (P7); do not interpret a win as satellite unreliability if it appears only under a controversial one-to-one mapping; restrict main Claim 2 text to the overlapping support of \(Q\) and \(D\), with truncated IPW and Gamma bounds for any statement about \(D\). Sources: Gupta et al., 2019, Creating xBD, CVPR Workshops, conference proceedings pp. 12–13, Figure 3 (the body on p. 12 also calls it Table 3); Camp Incident Damage Inspection Report, NIST-hosted, methodological table on Page 4 of 54; Roueche, Nakayama, Kijewski-Correa, Prevatt, 2024, Natural Hazards Review 25(2):04023060, printed page 04023060-6, Tables 3 and 4; 2016 Damage Assessment Category Guidelines, Florida Division of Emergency Management-hosted 2-page PDF, pp. 1–2. Official fema.gov Damage Assessment Operations Manual (2016-04-05) page numbers were not verified. StEER Hurricane Michael EARR, printed p. 3 (8–12 ft is a regional hazard observation). Paulik et al., 2019, Pure and Applied Geophysics 176:3305–3321, doi:10.1007/s00024-019-02254-9, full text not obtained. Secondary Palu only: Lahcene et al., 2021, NHESS 21:2315–2316, Table 1; Jalayer et al., 2023, NHESS 23:914, Table 2. Jalayer's phrase "complete structural collapse" is Jalayer's wording, not a verified Paulik definition. Unverified, and not cited as read: FAST Handbook v1.2 (2019); Vickery et al. (2006); Friedland 2009 dissertation; Friedland and Levitan 2009 conference PDF page numbers; official fema.gov manual page numbers; which cells of WiSPD Table 3 are bold (footnote a depends on bold criteria); a standalone official DINS "No Damage" definition. Do not back-fit the 2023 Unified App Handbook onto the 2018 Michael field protocol. Do not compute \(U\) until this entry is merged and the relevant fold-head sha256 values are written. Palu remains unfrozen.
