@@ -104,7 +104,48 @@ COLLAPSE_KEYWORD_RE = (
     r"structure (?:is )?gone|building (?:is )?gone|no structure left|no longer present"
 )
 
-WIND_MAP_02 = {"0": "undamaged", "1": "minor", "2": "moderate"}
+# Frozen StEER wind mapping quoted from docs/eval_protocol.md at origin/main
+# 551b87b90a0bc4b7cd337bdad7a9f3b9a9bf4180. Grade 0 and grade 1 are stated
+# explicitly. Protocol "0 → no" is landed as the 4-class label no-damage.
+# There is no moderate class.
+STEER_WIND_MAPPING_SOURCE = (
+    "docs/eval_protocol.md origin/main "
+    "551b87b90a0bc4b7cd337bdad7a9f3b9a9bf4180"
+)
+STEER_WIND_MAPPING_QUOTES = {
+    "0": "0 → no",
+    "1": r"1 → minor (does not satisfy \(F\))",
+    "2": "2 → minor, never major",
+    "3": (
+        "3 → major only with recorded partial roof or wall structural "
+        "failure, otherwise minor or unknown"
+    ),
+    "4": (
+        "4 is not automatically destroyed. StEER wind 4 maps to major by default, "
+        r"and the building stays in \(Q\). Wind 4 is promoted to destroyed only when a "
+        "component record shows the building as a whole is no longer an intact "
+        'structure, in the sense of xBD destroyed ("completely collapsed ... or '
+        'otherwise no longer present") and StEER surge 6 ("no intact structure"). '
+        "That requires at least one of: (1) an explicit complete-collapse, "
+        "building-no-longer-present, or no-intact-structure field is recorded; or "
+        "(2) wall structure failure in the living area (Table 4 note [2]; "
+        "ground-floor breakaway walls of elevated buildings do not count) and roof "
+        "structure recorded as failed or removed so that no intact roof structure "
+        "remains. Roof structure > 15% alone does not qualify. The Table 4 shaded "
+        "indicators for grade 4 (window or door failure > 50%, roof or wall "
+        "substrate > 25%, roof structure > 15%, wall structure failure) define "
+        "grade 4 and are not used to promote it. If the fields are missing or do "
+        "not meet the rule, the building stays major and is listed as "
+        '"wind 4 not promoted" with its observed component values. No numeric '
+        "threshold beyond these is added."
+    ),
+    "-1": r"−1 is excluded from wind \(Y\) and is not no-damage",
+}
+WIND_MAP_012 = {
+    "0": ("no-damage", "steer_protocol_0_to_no"),
+    "1": ("minor", "steer_protocol_1_to_minor"),
+    "2": ("minor", "steer_protocol_2_to_minor_never_major"),
+}
 
 # Frozen wind-grade-4 destroyed rule (Algorithm Researcher, 2026-11-17).
 # Default is major. Upgrade under rule (2) only when both structure fields are
@@ -391,8 +432,9 @@ def land_wind_grade(b):
                   if not b["wind_agree"] else "excluded_wind_grade_-1")
         return {"mapped": None, "reason": reason, **empty}
     g = b["wind_grade"]
-    if g in WIND_MAP_02:
-        return {"mapped": WIND_MAP_02[g], "reason": f"wind_grade_{g}_unchanged", **empty}
+    if g in WIND_MAP_012:
+        mapped, reason = WIND_MAP_012[g]
+        return {"mapped": mapped, "reason": reason, **empty}
     st = _structure(b["primary"]["row"])
     if g == "3":
         if st["roof_or_wall_structure_gt0"]:
@@ -932,25 +974,57 @@ def main():
         return {
             "unit": "unique footprints / buildings",
             "Q": len(buildings),
-            "no_damage": int(labels.get("undamaged", 0)),
+            "no_damage": int(labels.get("no-damage", 0)),
             "minor": int(labels.get("minor", 0)),
-            "moderate": int(labels.get("moderate", 0)),
             "major": int(labels.get("major", 0)),
             "destroyed": int(labels.get("destroyed", 0)),
             "unknown": int(labels.get("unknown", 0)),
             "excluded_inconsistent": n_inconsistent,
             "excluded_wind_grade_-1": n_minus1,
+            "unmapped_per_protocol": int(labels.get("unmapped_per_protocol", 0)),
             "wind_Y_n": sum(labels.values()),
             "note": (
-                "no_damage is the landed label for wind grade 0 (undamaged). "
-                "moderate is wind grade 2 unchanged under WIND_MAP_02 and is "
-                "reported separately rather than folded into major. "
+                "Classes follow the frozen StEER wind mapping in "
+                f"{STEER_WIND_MAPPING_SOURCE}. no_damage is the 4-class landing "
+                "of protocol text '0 → no'. Grade 2 maps to minor, never "
+                "major; there is no moderate class. "
                 "excluded_inconsistent are multi-point footprints dropped from "
                 "wind Y because the points disagree on wind grade; they stay in Q."
             ),
         }
 
     wind_label_counts = building_label_counts(Q_buildings)
+
+    def wind_grade_to_label_table(buildings):
+        """Per-cell wind-grade -> landed-label counts, plus protocol quote."""
+        cells = {}
+        for g in ["0", "1", "2", "3", "4"]:
+            recs = [b for b in buildings if b["wind_in_Y"] and b["wind_grade"] == g]
+            by_label = Counter((b["wind_mapped"] or {}).get("mapped") or "" for b in recs)
+            cells[g] = {
+                "protocol_text": STEER_WIND_MAPPING_QUOTES[g],
+                "n_in_wind_Y": len(recs),
+                "by_label": dict(sorted(by_label.items(), key=lambda t: t[0])),
+            }
+        n_minus1 = sum(1 for b in buildings if b["wind_agree"] and not b["wind_in_Y"])
+        n_inconsistent = sum(1 for b in buildings if not b["wind_agree"])
+        cells["-1"] = {
+            "protocol_text": STEER_WIND_MAPPING_QUOTES["-1"],
+            "n_in_Q": n_minus1,
+            "by_label": {"excluded_from_wind_Y": n_minus1} if n_minus1 else {"excluded_from_wind_Y": 0},
+        }
+        cells["inconsistent_multi_point"] = {
+            "protocol_text": "Not a source grade. Multi-point footprints that disagree on wind grade are dropped from wind Y only and stay in Q.",
+            "n_in_Q": n_inconsistent,
+            "by_label": {"excluded_inconsistent": n_inconsistent},
+        }
+        return {
+            "source": STEER_WIND_MAPPING_SOURCE,
+            "quotes": STEER_WIND_MAPPING_QUOTES,
+            "cells": cells,
+        }
+
+    wind_grade_label_table = wind_grade_to_label_table(Q_buildings)
 
     # F observability at building level on Q.
     wall_status_counts = Counter(b["F_info"]["wall_structure_status"] for b in Q_buildings)
@@ -1151,6 +1225,7 @@ def main():
             "grade_4_in_wind_Y": building_component_coverage(Q_buildings, "4"),
         },
         "wind_label_counts_building_level": wind_label_counts,
+        "wind_grade_to_label_table": wind_grade_label_table,
         "F_observability": F_observability,
         "P7_conservative_mapping_sensitivity": p7_sensitivity,
         "wind_3_4_landing": landing,
@@ -1444,7 +1519,7 @@ Matching rule unchanged (frozen 10 m / IoU>0.5, no offset).
 ## Wind 3/4 landing (buildings stay in Q)
 - Grade 3 in wind Y: {landing['grade_3']['n_buildings_in_wind_Y']} buildings; {landing['grade_3']['major']} -> major (roof or wall structure damage >0); {landing['grade_3']['unknown']} -> unknown (listed in wind_grade3_unknown.csv).
 - Grade 4: {landing['grade_4']['n_buildings_with_a_grade4_point']} buildings in Q have a grade-4 point ({landing['grade_4']['n_in_wind_Y']} in wind Y, {landing['grade_4']['n_multi_point_wind_disagree_still_in_Q']} also have a disagreeing other-grade point). In wind Y, {landing['grade_4']['destroyed_in_wind_Y']} upgraded to destroyed under rule (2) (roof and wall structure both recorded as 100); {landing['grade_4']['major_in_wind_Y']} remain major (wind4_not_upgraded); {landing['grade_4']['unknown_in_wind_Y']} unknown. The 17-building upgrade list is wind_grade4_upgrade_list.csv. P7 conservative-mapping sensitivity is a separate output and does not replace these main counts.
-- Building-level wind labels in Q: no_damage={wind_label_counts['no_damage']}, minor={wind_label_counts['minor']}, moderate={wind_label_counts['moderate']}, major={wind_label_counts['major']}, destroyed={wind_label_counts['destroyed']}, unknown={wind_label_counts['unknown']}, excluded_inconsistent={wind_label_counts['excluded_inconsistent']}.
+- Building-level wind labels in Q: no_damage={wind_label_counts['no_damage']}, minor={wind_label_counts['minor']}, major={wind_label_counts['major']}, destroyed={wind_label_counts['destroyed']}, unknown={wind_label_counts['unknown']}, excluded_inconsistent={wind_label_counts['excluded_inconsistent']}. Grade 2 maps to minor per the frozen protocol; there is no moderate class.
 - F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; wall distribution eq0/gt0/missing/inconsistent={F_observability['wall_structure_damage_distribution_in_Q']}. F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} inconsistent multi-point footprints.
 
 ## Old 16/14 vs 18/17 mismatch
@@ -1483,6 +1558,7 @@ P7 does not replace main counts. No U, no GPU, no downloads, matching rule uncha
         "surge_Y_n": summary["Q_building_level"]["surge_Y_n"],
         "wind_3_4_landing": summary["Q_building_level"]["wind_3_4_landing"],
         "wind_label_counts_building_level": summary["Q_building_level"]["wind_label_counts_building_level"],
+        "wind_grade_to_label_table": summary["Q_building_level"]["wind_grade_to_label_table"],
         "F_observability_short": {
             "n_wall_structure_damage_non_missing": F_observability["n_wall_structure_damage_non_missing"],
             "n_F_eq_1": F_observability["n_F_eq_1"],
