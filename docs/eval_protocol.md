@@ -25,7 +25,7 @@ Photo-less buildings without an independent reference are deployment targets onl
 
 These thresholds are frozen here, before any statistics are computed.
 
-For event \(e\), \(\hat{Y}^{s}\) comes only from the ViT-B seed-1 fold head that never saw \(e\). "Frozen seed 1" means a frozen recipe, seed, and that fold's weight sha256, not one shared head for every event. Write that sha256 in the change log before any \(U\) for \(e\) is computed. Official xBD labels are never \(Y\).
+For event \(e\), \(\hat{Y}^{s}\) comes only from the ViT-B seed-1 fold head that never saw \(e\). "Frozen seed 1" means a frozen recipe, seed, and that fold's weight sha256, not one shared head for every event. The official recipe that defines \(U\) sets both `backbone.image_size` and `data.image_size` to 518 (`configs/xbd_dinov2_vitb.yaml`, which `train-xbd --fold` loads). 224 remains a short-side probe only. The weight loader does not interpolate positional embeddings and still rejects a size mismatch. This image size is part of the recipe that enters the definition of \(U\). It is not a backbone swap and not a loader fix. The backbone stays DINOv2 ViT-B/14. Write that sha256 in the change log before any \(U\) for \(e\) is computed. Official xBD labels are never \(Y\).
 
 Let \(\hat{p}\) be the full softmax of that same fold head. The frozen thresholds above are split and reported as follows.
 
@@ -80,7 +80,7 @@ Buildings used to train the conflict signal, and their neighboring spatial block
 
 ### Leave-one-reference-event-out damage heads
 
-The satellite damage head is DINOv2 ViT-B/14, seed 1. Conflict labels are computed later from that head. A reference event is an event with an independent ground reference. Each fold holds that event out of one damage head entirely.
+The satellite damage head is DINOv2 ViT-B/14, seed 1, image size 518. Conflict labels are computed later from that head. 224 is a short-side probe only and is not the recipe that defines \(U\). A reference event is an event with an independent ground reference. Each fold holds that event out of one damage head entirely.
 
 For a fold head, every image whose xBD `metadata.disaster` is the held-out event is removed from the official train, test, and hold splits used by that head. Membership is counted from those files by the exact disaster string. The count in each of those three splits is asserted to be 0. The removed images are a separate eval set for that head. They are not used as train or val, and they are not part of that head's in-fold test or hold. In this repository the hold split is named `holdout`. Some releases store it in a directory named `hold`; `data.split_dirs.holdout` points at that directory. There is no separate official val split.
 
@@ -300,3 +300,4 @@ P7 reports P2–P5 under the frozen mappings and under the conservative mappings
 - 2026-11-17, cross-env agreement of \(\hat{Y}^{s}\) at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. Results stay stratified by event.
 - 2026-11-17, `minus-hurricane-michael-seed2` is a stability repeat (`role: seed-repeat`, `claim_evidence: false`, seed 2). It does not define \(U\). Default routing uses the seed-1 Michael head only.
 - 2026-11-17, removed the unused `torch_version` field. Cross-env `no_effect` is true only when every event's agreement is at least 99%; the summary lists per-event agreement and the events that fail. A prediction row must have `image_id` and `building_uid`, and those keys must be unique.
+- 2026-11-17, Jlin reconfirmed the official xBD DINOv2 ViT-B fold recipe that defines \(U\): `backbone.image_size` and `data.image_size` are 518 in `configs/xbd_dinov2_vitb.yaml`, which `python -m mvbridge train-xbd --fold` loads. Fold entries do not override image size. This is a recipe change that enters the definition of \(U\). It is not a backbone swap and not a loader fix. The backbone stays DINOv2 ViT-B/14. The weight loader does not interpolate positional embeddings and still rejects size mismatches. 224 remains a short-side probe only. Batch size 32, AMP `bfloat16`, and `freeze: true` are unchanged. Changed before any \(U\) was computed.

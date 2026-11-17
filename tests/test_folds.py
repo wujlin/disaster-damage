@@ -597,6 +597,40 @@ def test_checkpoint_fold_must_match_the_request():
         assert_checkpoint_fold({"config": {"fold": michael.name}}, None)
 
 
+def _image_size_values(node):
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "image_size":
+                yield value
+            yield from _image_size_values(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _image_size_values(item)
+
+
+def test_official_fold_recipe_image_size_is_518():
+    """train-xbd --fold keeps 518 from the ViT-B config. Fold entries do not set 224."""
+    base = load_yaml(ROOT / "configs" / "xbd_dinov2_vitb.yaml")
+    assert base["backbone"]["image_size"] == 518
+    assert base["data"]["image_size"] == 518
+    assert base["batch_size"] == 32
+    assert base["backbone"]["freeze"] is True
+    fold_file = load_yaml(FOLDS)
+    assert list(_image_size_values(fold_file)) == []
+    assert fold_file["train"]["batch_size"] == 32
+    assert fold_file["train"]["amp_dtype"] == "bfloat16"
+    for fold in load_folds(FOLDS):
+        config = copy.deepcopy(base)
+        config["fold"] = fold.name
+        config["folds_config"] = str(FOLDS)
+        apply_fold_data_paths(config, fold)
+        assert config["backbone"]["image_size"] == 518
+        assert config["data"]["image_size"] == 518
+        assert config["batch_size"] == 32
+        assert config["amp_dtype"] == "bfloat16"
+        assert config["backbone"]["freeze"] is True
+
+
 def test_host_paths_and_shared_pins_apply_without_gpu_changes(tmp_path):
     folds = {fold.name: fold for fold in load_folds(FOLDS)}
     michael_cfg = copy.deepcopy(load_yaml(ROOT / "configs" / "xbd_dinov2_vitb.yaml"))

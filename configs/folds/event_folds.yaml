@@ -1,5 +1,8 @@
 # Leave-one-reference-event-out folds for the satellite damage head.
 # Architecture: DINOv2 ViT-B/14. Seed: 1, the frozen conflict/satellite head.
+# Official image size is 518, from configs/xbd_dinov2_vitb.yaml
+# (backbone.image_size and data.image_size). These entries do not override it.
+# 224 is a short-side probe only. The weight loader does not interpolate pos_embed.
 #
 # This file is an appendable list. Add a later fold (for example
 # minus-hurricane-florence) by adding an entry. Out-of-fold routing reads the
