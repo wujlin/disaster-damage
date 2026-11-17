@@ -4,6 +4,10 @@ This document is the schema for `feat/score-contract`. It does not change the
 official training recipe, does not start official Michael scoring, and does not
 write official output directories or checkpoints.
 
+The score-contract rules below are official protocol text in
+`docs/eval_protocol.md`. This file follows that protocol. It does not add a
+rule the protocol does not state.
+
 The implementation lives in `src/mvbridge/score_contract/`. Tests use only
 synthetic probabilities and synthetic (S, Y, Z) fixtures from
 `mvbridge.score_contract.fixtures`.
@@ -31,29 +35,34 @@ synthetic probabilities and synthetic (S, Y, Z) fixtures from
 
 ## Frozen comparisons
 
+These comparisons are stated in `docs/eval_protocol.md` (Baselines, P4, and
+P5). This file does not choose a different comparison.
+
 - The P4 main test compares only `entropy` and `one_minus_max_p`.
 - `g0` belongs only to P5. Asking P4 to include `g0` is an error.
 - This worktree does not implement or fit `g0`.
 
-## Deterministic rules that need sign-off if the protocol should freeze them
+## Rules taken from the evaluation protocol
 
-- **Tie break.** When two or more classes share the maximum probability (within
-  absolute tolerance `1e-12`), the adapter reports the tied class with the
-  lowest official index, and sets `tied=True`. The protocol text does not yet
-  name a tie rule.
-- **Entropy units.** Entropy is reported in nats (natural log). Ranking is
-  invariant to a change of base.
-- **Historical source rule.** A pair is an eligible historical source for fold
-  F only when its event is not held out by F, S and Y are on the official
-  four-class scale, R=1, V=1, the footprint match is accepted, and S was
-  produced by a head that held that event out. In-sample reports are
-  inventoried and flagged, but they do not authorize a historically trained Q.
-- **Z schema.** Z is a mapping of covariates available before the survey is
-  inspected. The protocol does not freeze a field list, so the contract keeps Z
-  as an open mapping.
-- **Palu and other unmapped grades.** Tokens such as `unknown`, `unclassified`,
-  `ds1`, and `-1` are not four-class eligible. Palu's mapping remains unfrozen
-  in the protocol.
+`docs/eval_protocol.md` is the official source of these rules.
+
+- **Tie break.** Label section: when two or more classes share the maximum
+  probability within absolute tolerance `1e-12`, choose the class with the
+  smallest index in the official order (no-damage, minor-damage, major-damage,
+  destroyed) and mark `tied=True`.
+- **Entropy units.** Notation for \(H\): entropy uses the natural logarithm
+  (nats). Ranking is invariant to log base.
+- **Historical source rule.** Historical source eligibility: the event is not
+  this fold's holdout; S and Y are in the official four classes; R=1; V=1; the
+  match was accepted; and S was produced by a head that held out that event.
+  In-sample reports are recorded and flagged, but they do not authorize a
+  historically trained Q.
+- **Z schema.** Notation for \(Z\): Z is an open mapping of covariates that
+  are available before the survey is inspected. The protocol does not yet
+  freeze a field table.
+- **Four-class labels.** Four-class eligibility, and the Palu subsection: the
+  labels unknown, unclassified, ds1, and -1 are not four-class eligible. The
+  Palu mapping remains unfrozen.
 
 ## Official recipe (unchanged)
 
