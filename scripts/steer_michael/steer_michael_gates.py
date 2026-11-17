@@ -1144,7 +1144,6 @@ def main():
     excluded_inconsistent_ids = _sorted_uids(excluded_inconsistent_from_scorable_U)
     F1_wind_Y_undefined_ids = _sorted_uids(F1_wind_Y_undefined)
     u_f_only_candidate_ids = _sorted_uids(u_f_only_candidates)
-    possible_UF_only = []
 
     F_unobs_footprints = [
         {
@@ -1267,9 +1266,9 @@ def main():
             "8262c29a, have no 4-class Y and are not scorable for U. This "
             "event has no independent U_F,only sample in the main test."
         ),
-        "no_independent_U_F_only_sample_in_main_test": True,
+        "no_independent_U_F_only_sample_in_main_test": len(u_f_only_candidates) == 0,
         "possible_U_F_only_samples": {
-            "n": len(possible_UF_only),
+            "n": len(u_f_only_candidates),
             "note": (
                 "Same set as u_f_only_candidates. Identified without "
                 "computing U and without reading Y-hat^s. U_F,only requires "
@@ -1281,7 +1280,7 @@ def main():
                 "and they are not listed here. This event has no independent "
                 "U_F,only sample in the main test."
             ),
-            "buildings": possible_UF_only,
+            "buildings": u_f_only_candidate_ids,
         },
         "F_unobserved_inconsistent_multi_point_footprints": F_unobs_footprints,
     }
