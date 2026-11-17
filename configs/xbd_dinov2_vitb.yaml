@@ -1,6 +1,10 @@
 # DINOv2 ViT-B probe on the official xBD/xView2 train split.
 # ViT-L is not a config option. Running this file is a real training job;
 # the week-1 scaffold does not launch it.
+#
+# 518 is the official recipe that defines U for `python -m mvbridge train-xbd --fold`.
+# Both image_size fields below are that recipe. 224 is a short-side probe only.
+# The weight loader does not interpolate positional embeddings.
 
 seed: 0
 device: auto
@@ -14,7 +18,7 @@ output_dir: outputs/xbd_dinov2_vitb
 
 data:
   root: null
-  image_size: 224
+  image_size: 518
   crop_padding: 16
   exclude_ids_file: null
   split_dirs:
@@ -24,7 +28,7 @@ data:
 
 backbone:
   name: vit_base_patch14_dinov2
-  image_size: 224
+  image_size: 518
   # true asks timm for DINOv2 ViT-B weights and stores them in the torch cache,
   # outside this repository. Set weights_path to a local file to skip the download.
   pretrained: true

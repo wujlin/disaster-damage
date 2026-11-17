@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import logging
 
 import pytest
@@ -98,6 +99,21 @@ def test_local_state_dict_must_match_exactly(tmp_path):
     torch.save(missing, gone)
     with pytest.raises(ConfigError, match="missing_keys"):
         load_local_encoder_weights(_Tiny(), gone)
+
+
+def test_size_mismatch_is_rejected_without_interpolation(tmp_path):
+    module = _Tiny()
+    blob = {key: value.detach().clone() for key, value in module.state_dict().items()}
+    blob["fc.weight"] = torch.zeros(4, 3)
+    path = tmp_path / "shape.pt"
+    torch.save(blob, path)
+    target = _Tiny()
+    before = target.fc.weight.detach().clone()
+    with pytest.raises(RuntimeError, match="size mismatch"):
+        load_local_encoder_weights(target, path)
+    assert torch.equal(target.fc.weight, before)
+    source = inspect.getsource(load_local_encoder_weights)
+    assert "interpolat" not in source.lower()
 
 
 def test_weights_path_never_asks_timm_to_download(tmp_path, monkeypatch):

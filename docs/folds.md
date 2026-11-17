@@ -17,6 +17,9 @@ Every fold uses the same training pin. The GPU name does not change it.
 - batch size: 32
 - AMP dtype: `bfloat16`
 - torch is not pinned. WSA and WSB may use different builds. Each run writes `run_env.json` with Python, hostname, torch, CUDA (`torch.version.cuda`), GPU names, and the NVIDIA driver.
+- image size: 518 on both `backbone.image_size` and `data.image_size` in `configs/xbd_dinov2_vitb.yaml`
+
+518 is the official recipe that defines \(U\) for this xBD DINOv2 ViT-B fold training. 224 is a short-side probe only. Fold entries do not set image size, so a fold run keeps 518 from that file. The weight loader does not interpolate positional embeddings and rejects a size mismatch. Batch size, AMP dtype, and `backbone.freeze: true` are unchanged. This is a recipe change inside the definition of \(U\). The backbone is still DINOv2 ViT-B/14.
 
 Host paths are per machine. `hold` is the on-disk hold directory on both.
 
