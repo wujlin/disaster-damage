@@ -1,0 +1,30 @@
+# Event and spatial overlap between local SAGIN metadata and local xBD labels.
+# Roots stay empty until you pass them. This file does not download either dataset.
+
+buffer_m: 1000
+date_window_days: 14
+catalog: configs/event_catalog.yaml
+
+sagin:
+  format: manifest          # manifest | probglc
+  manifest_csv: null        # CSV with group_id,event_name,event_date,lat,lon,view,path,is_simulated
+  root: null                # used to resolve relative paths in the manifest
+  probglc_root: null        # MultiDisaster root when format is probglc
+  metadata_file: Other/allData_20250320.xlsx
+  id_column: newnewID
+  which_tables: all         # all joins ProbGLC's 80/20 and 70/30 tables; it is not an xBD split
+  uav_default_is_simulated: true
+
+xbd:
+  root: null
+  split_dirs:
+    train: train
+    test: test
+    holdout: holdout        # set to hold if that is the folder name in your release
+
+# Groups that meet test/holdout geography are removed from continued pretraining.
+# The official xBD test split is left intact unless you opt into the alternative file.
+pretrain_exclusion_splits: [test, holdout]
+downstream_exclusion_splits: [test, holdout]
+
+output_dir: outputs/overlap_audit

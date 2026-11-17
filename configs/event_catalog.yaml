@@ -1,0 +1,270 @@
+# Event identities for the SAGIN–xBD overlap audit.
+#
+# An id is date-specific. Matching uses exact aliases, xView2 filename slugs,
+# and match_all token rules. It does not fuzzy-match a shared word such as
+# "flood". match_all tokens are stemmed in code (flooding -> flood, wildfires -> fire).
+#
+# xBD dates and tiers: Gupta et al., arXiv:1911.09296, Table 1.
+# Filename slugs are the xView2 image prefixes (for example pinery-bushfire).
+# Strings that do not match are listed in the audit report so a local release
+# can be added here.
+#
+# SAGIN example events: Li et al., ProbGLC (ISPRS 2026), and the SAGINGeo
+# abstract (IEEE JSTARS, DOI 10.1109/JSTARS.2026.3712316). The seven names are
+# examples. ProbGLC also says the archive draws on more than 50 NOAA events.
+# Year-only ranges are used where the source prints a year and not a day.
+
+ambiguous_names:
+  - midwest flood
+  - midwest flooding
+  - midwest us flooding
+  - california fire
+  - california wildfire
+  - california wildfires
+  - tornado
+  - flood
+  - fire
+  - wildfire
+
+review_only:
+  - left: midwest-us-flooding-2015
+    right: midwest-us-floods-2019
+    reason: "Same basin wording, different years. SAGIN's example is 2015. xBD Midwest US floods are 3 Jan–31 May 2019."
+  - left: california-fire-2025
+    right: santa-rosa-wildfires-2017
+    reason: "Both are California fires. 2025 is not the Santa Rosa fires of October 2017."
+  - left: california-fire-2025
+    right: carr-wildfire-2018
+    reason: "Carr (xView2 slug socal-fire) is Jul–Aug 2018, not the 2025 California fires."
+  - left: california-fire-2025
+    right: woolsey-fire-2018
+    reason: "Woolsey is November 2018, not the 2025 California fires."
+  - left: illinois-tornado-2015
+    right: joplin-tornado-2011
+    reason: "Illinois 2015 and Joplin 2011 are different tornadoes."
+  - left: illinois-tornado-2015
+    right: moore-tornado-2013
+    reason: "Illinois 2015 and Moore 2013 are different tornadoes."
+  - left: illinois-tornado-2015
+    right: tuscaloosa-tornado-2011
+    reason: "Illinois 2015 and Tuscaloosa 2011 are different tornadoes."
+  - left: louisiana-flood-2016
+    right: hurricane-harvey-2017
+    reason: "Harvey is 2017. The Louisiana flood named in the SAGIN example is 2016."
+  - left: louisiana-flood-2016
+    right: hurricane-matthew-2016
+    reason: "Matthew (Sep–Oct 2016) and the 2016 Louisiana flood are different events."
+  - left: nashville-tornado-2020
+    right: ""
+    reason: "2020 is after the xBD events. None of the xBD tornadoes use this name."
+  - left: maui-fire-2023
+    right: ""
+    reason: "Maui 2023 is not an xBD event."
+  - left: hurricane-ian-2022
+    right: ""
+    reason: "Ian (landfall 28 Sep 2022) is not an xBD hurricane. xBD hurricanes are Harvey, Matthew, Florence, and Michael. One ProbGLC sentence writes IAN (2025); that year is not used."
+
+events:
+  - id: guatemala-volcano-2018
+    start: "2018-06-03"
+    end: "2018-06-03"
+    filename_prefixes: ["guatemala-volcano"]
+    exact: ["guatemala fuego volcano eruption", "guatemala volcano"]
+    match_all: ["guatemala", "volcano"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: hurricane-michael-2018
+    start: "2018-10-07"
+    end: "2018-10-16"
+    filename_prefixes: ["hurricane-michael"]
+    exact: ["hurricane michael"]
+    match_all: ["hurricane", "michael"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: santa-rosa-wildfires-2017
+    start: "2017-10-08"
+    end: "2017-10-31"
+    filename_prefixes: ["santa-rosa-wildfire"]
+    exact: ["santa rosa wildfires"]
+    match_all: ["santa", "rosa", "fire"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: hurricane-florence-2018
+    start: "2018-09-10"
+    end: "2018-09-19"
+    filename_prefixes: ["hurricane-florence"]
+    exact: ["hurricane florence"]
+    match_all: ["hurricane", "florence"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: midwest-us-floods-2019
+    start: "2019-01-03"
+    end: "2019-05-31"
+    filename_prefixes: ["midwest-flooding"]
+    exact: ["midwest us floods", "midwest us floods 2019"]
+    match_all: ["midwest", "flood", "2019"]
+    match_none: ["2015"]
+    source: "Gupta et al. Table 1, tier 1. xView2 slug midwest-flooding."
+
+  - id: palu-tsunami-2018
+    start: "2018-09-18"
+    end: "2018-09-18"
+    filename_prefixes: ["palu-tsunami"]
+    exact: ["indonesia tsunami", "palu tsunami"]
+    match_all: ["palu", "tsunami"]
+    source: "Gupta et al. Table 1, tier 1. xView2 slug palu-tsunami."
+
+  - id: carr-wildfire-2018
+    start: "2018-07-23"
+    end: "2018-08-30"
+    filename_prefixes: ["socal-fire"]
+    exact: ["carr wildfire", "socal fire"]
+    match_all: ["carr", "fire"]
+    source: "Gupta et al. Table 1, tier 1. xView2 slug socal-fire."
+
+  - id: hurricane-harvey-2017
+    start: "2017-08-17"
+    end: "2017-09-02"
+    filename_prefixes: ["hurricane-harvey"]
+    exact: ["hurricane harvey"]
+    match_all: ["hurricane", "harvey"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: mexico-earthquake-2017
+    start: "2017-09-19"
+    end: "2017-09-19"
+    filename_prefixes: ["mexico-earthquake"]
+    exact: ["mexico city earthquake", "mexico earthquake"]
+    match_all: ["mexico", "earthquake"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: hurricane-matthew-2016
+    start: "2016-09-28"
+    end: "2016-10-10"
+    filename_prefixes: ["hurricane-matthew"]
+    exact: ["hurricane matthew"]
+    match_all: ["hurricane", "matthew"]
+    source: "Gupta et al. Table 1, tier 1."
+
+  - id: nepal-monsoon-2017
+    start: "2017-07-01"
+    end: "2017-09-30"
+    filename_prefixes: ["nepal-flooding"]
+    exact: ["monsoon in nepal india bangladesh", "nepal flooding"]
+    match_all: ["nepal", "flood"]
+    source: "Gupta et al. Table 1, tier 1. xView2 slug nepal-flooding."
+
+  - id: moore-tornado-2013
+    start: "2013-05-20"
+    end: "2013-05-20"
+    filename_prefixes: ["moore-tornado"]
+    exact: ["moore ok tornado", "moore tornado"]
+    match_all: ["moore", "tornado"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: tuscaloosa-tornado-2011
+    start: "2011-04-27"
+    end: "2011-04-27"
+    filename_prefixes: ["tuscaloosa-tornado"]
+    exact: ["tuscaloosa al tornado", "tuscaloosa tornado"]
+    match_all: ["tuscaloosa", "tornado"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: sunda-tsunami-2018
+    start: "2018-12-22"
+    end: "2018-12-22"
+    filename_prefixes: ["sunda-tsunami"]
+    exact: ["sunda strait tsunami", "sunda tsunami"]
+    match_all: ["sunda", "tsunami"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: lower-puna-2018
+    start: "2018-05-23"
+    end: "2018-08-14"
+    filename_prefixes: ["lower-puna-volcano"]
+    exact: ["lower puna volcanic eruption", "lower puna volcano"]
+    match_all: ["puna", "volcano"]
+    source: "Gupta et al. Table 1, tier 3. xView2 slug lower-puna-volcano."
+
+  - id: joplin-tornado-2011
+    start: "2011-05-22"
+    end: "2011-05-22"
+    filename_prefixes: ["joplin-tornado"]
+    exact: ["joplin mo tornado", "joplin tornado"]
+    match_all: ["joplin", "tornado"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: woolsey-fire-2018
+    start: "2018-11-09"
+    end: "2018-11-28"
+    filename_prefixes: ["woolsey-fire"]
+    exact: ["woolsey fire"]
+    match_all: ["woolsey", "fire"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: pinery-fire-2018
+    start: "2018-11-25"
+    end: "2018-12-02"
+    filename_prefixes: ["pinery-bushfire"]
+    exact: ["pinery fire", "pinery bushfire"]
+    match_all: ["pinery", "fire"]
+    source: "Gupta et al. Table 1, tier 3. Public xView2 names use pinery-bushfire."
+
+  - id: portugal-wildfires-2017
+    start: "2017-06-17"
+    end: "2017-06-24"
+    filename_prefixes: ["portugal-wildfire"]
+    exact: ["portugal wildfires"]
+    match_all: ["portugal", "fire"]
+    source: "Gupta et al. Table 1, tier 3."
+
+  - id: california-fire-2025
+    start: "2025-01-01"
+    end: "2025-12-31"
+    exact: ["california fire 2025", "california wildfires 2025"]
+    match_all: ["california", "fire", "2025"]
+    source: "Named as an example in Li et al., ProbGLC. Year only; not a complete SAGIN event list."
+
+  - id: maui-fire-2023
+    start: "2023-01-01"
+    end: "2023-12-31"
+    exact: ["maui fire", "maui fire 2023", "maui wildfires", "maui wildfires 2023"]
+    match_all: ["maui", "fire", "2023"]
+    source: "Named as Maui Fire (2023) in Li et al., ProbGLC. Day of month is not given there."
+
+  - id: hurricane-ian-2022
+    start: "2022-09-23"
+    end: "2022-10-02"
+    exact: ["hurricane ian", "hurricane ian 2022"]
+    match_all: ["hurricane", "ian"]
+    match_none: ["2025"]
+    source: "ProbGLC dates Hurricane Ian to late September–early October 2022, peak 28 Sep 2022. A later sentence writes IAN (2025); 2022 is the date used here."
+
+  - id: nashville-tornado-2020
+    start: "2020-01-01"
+    end: "2020-12-31"
+    exact: ["nashville tornado", "nashville tornadoes", "nashville tornado 2020", "nashville tornadoes 2020"]
+    match_all: ["nashville", "tornado", "2020"]
+    source: "Named as Nashville Tornadoes (2020) in Li et al., ProbGLC. Year only."
+
+  - id: illinois-tornado-2015
+    start: "2015-01-01"
+    end: "2015-12-31"
+    exact: ["illinois tornado", "illinois tornadoes", "illinois tornado 2015", "illinois tornadoes 2015"]
+    match_all: ["illinois", "tornado", "2015"]
+    source: "Named as Illinois Tornadoes (2015) in Li et al., ProbGLC. Year only."
+
+  - id: louisiana-flood-2016
+    start: "2016-01-01"
+    end: "2016-12-31"
+    exact: ["louisiana flood", "louisiana flooding", "louisiana flood 2016", "louisiana flooding 2016"]
+    match_all: ["louisiana", "flood", "2016"]
+    source: "Named as Louisiana Flooding (2016) in Li et al., ProbGLC. Year only."
+
+  - id: midwest-us-flooding-2015
+    start: "2015-01-01"
+    end: "2015-12-31"
+    exact: ["midwest u.s. flooding 2015", "midwest us flooding 2015", "midwest flood 2015", "midwest flooding 2015"]
+    match_all: ["midwest", "flood", "2015"]
+    match_none: ["2019"]
+    source: "Named as Midwest U.S. Flooding (2015) in Li et al., ProbGLC. Distinct from xBD's 2019 Midwest floods."

@@ -1,0 +1,18 @@
+# Location-grouped SAGIN loader.
+# Point format/manifest_csv/root (or probglc_root) at local metadata. Nothing is downloaded.
+
+format: manifest
+manifest_csv: null
+root: null
+probglc_root: null
+metadata_file: Other/allData_20250320.xlsx
+id_column: newnewID
+which_tables: all
+uav_default_is_simulated: true
+
+image_size: 224
+min_views: 2
+missing_view_policy: allow_partial   # allow_partial | skip_group | error
+check_files: true
+exclude_ids_file: null               # exclude_pretrain_sagin_groups.txt from the audit
+seed: 0

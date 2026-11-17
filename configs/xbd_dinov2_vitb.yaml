@@ -1,0 +1,37 @@
+# DINOv2 ViT-B probe on the official xBD/xView2 train split.
+# ViT-L is not a config option. Running this file is a real training job;
+# the week-1 scaffold does not launch it.
+
+seed: 0
+device: auto
+epochs: 10
+batch_size: 32
+num_workers: 0
+lr: 0.001
+weight_decay: 0.01
+log_every: 20
+output_dir: outputs/xbd_dinov2_vitb
+
+data:
+  root: null
+  image_size: 224
+  crop_padding: 16
+  exclude_ids_file: null
+  split_dirs:
+    train: train
+    test: test
+    holdout: holdout
+
+backbone:
+  name: vit_base_patch14_dinov2
+  image_size: 224
+  # true asks timm for DINOv2 ViT-B weights and stores them in the torch cache,
+  # outside this repository. Set weights_path to a local file to skip the download.
+  pretrained: true
+  weights_path: null
+  freeze: true
+
+damage:
+  proj_dim: 256
+  num_classes: 4
+  dropout: 0.1
