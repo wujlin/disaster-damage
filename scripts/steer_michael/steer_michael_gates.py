@@ -151,7 +151,7 @@ def _distinct_values(rows, keys):
     for k in keys:
         c = Counter((r.get(k) or "") for r in rows)
         out[k] = {
-            "n_filled": sum(1 for v, n in c.items() if str(v).strip() != ""),
+            "n_filled": sum(n for v, n in c.items() if str(v).strip() != ""),
             "n_distinct_including_empty": len(c),
             "n_distinct_nonempty": sum(1 for v in c if str(v).strip() != ""),
             "counts": dict(sorted(c.items(), key=lambda t: (t[0] == "", t[0]))),
