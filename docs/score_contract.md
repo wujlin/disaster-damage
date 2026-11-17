@@ -57,8 +57,9 @@ P5). This file does not choose a different comparison.
   match was accepted; and S was produced by a head that held out that event.
   In-sample reports are recorded and flagged, but they do not authorize a
   historically trained Q.
-- **Z schema.** Notation for \(Z\): Z is currently an open pre-disaster
-  covariate mapping. The protocol does not yet freeze a field table.
+- **Z schema.** Notation for \(Z\): Z is an open mapping of covariates that
+  are available before the survey is inspected. The protocol does not yet
+  freeze a field table.
 - **Four-class labels.** Four-class eligibility, and the Palu subsection: the
   labels unknown, unclassified, ds1, and -1 are not four-class eligible. The
   Palu mapping remains unfrozen.
