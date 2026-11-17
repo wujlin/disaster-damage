@@ -19,7 +19,7 @@ from mvbridge.data.folds import (
     bind_event_fold,
     resolve_fold,
 )
-from mvbridge.engine.runtime import assert_pinned_torch
+from mvbridge.engine.runtime import collect_run_env, require_same_fold_env, write_run_env
 from mvbridge.models.pathways import prepare_local_backbone
 from mvbridge.data.xbd import XBDBuildingDataset
 from mvbridge.engine.metrics import classification_metrics
@@ -40,7 +40,15 @@ def run_evaluation(config: dict, logger, *, split: str, checkpoint: str) -> dict
         raise DataError(f"Checkpoint does not exist: {checkpoint_path}")
     if config.get("fold"):
         apply_fold_data_paths(config, resolve_fold(config))
-        assert_pinned_torch(config, logger)
+        if not config.get("training_output_dir"):
+            config["training_output_dir"] = config.get("output_dir")
+        _separate_cross_env_output(config)
+    if config.get("output_dir") or config.get("fold"):
+        current_env = collect_run_env()
+        if config.get("fold"):
+            require_same_fold_env(config, logger, current_env)
+        if config.get("output_dir"):
+            write_run_env(config["output_dir"], current_env, logger)
     prepare_local_backbone(config, logger)
     fold = None
     manifest = None
@@ -94,7 +102,14 @@ def run_evaluation(config: dict, logger, *, split: str, checkpoint: str) -> dict
     model = build_baseline(config).to(device)
     blob = load_damage_weights(model, checkpoint_path)
     assert_checkpoint_fold(blob, fold)
-    metrics = evaluate_loader(model, loader, device)
+    metrics, prediction_rows = evaluate_loader(model, loader, device)
+    disaster_by_image = {}
+    if hasattr(dataset, "examples"):
+        for example in dataset.examples:
+            disaster_by_image.setdefault(example.image_id, getattr(example, "disaster", "") or "")
+    for row in prediction_rows:
+        row["disaster"] = disaster_by_image.get(row["image_id"], "")
+    metrics["per_event"] = _per_event_counts(prediction_rows, truths_by_key=None)
     metrics["split"] = split
     metrics["official_split"] = not bool(data_cfg.get("exclude_ids_file")) and not config.get("fold")
     metrics["checkpoint"] = str(checkpoint_path)
@@ -106,6 +121,12 @@ def run_evaluation(config: dict, logger, *, split: str, checkpoint: str) -> dict
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = output_dir / f"metrics_{split}.json"
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    predictions_path = output_dir / f"predictions_{split}.json"
+    predictions_path.write_text(
+        json.dumps({"records": prediction_rows}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    logger.info("predictions wrote %s", predictions_path)
     logger.info(
         "split=%s count=%s accuracy=%.4f weighted_f1=%.4f wrote %s",
         split,
@@ -136,15 +157,61 @@ def assert_checkpoint_fold(blob: dict, fold) -> None:
         )
 
 
-def evaluate_loader(model, loader, device) -> dict:
+def evaluate_loader(model, loader, device) -> tuple[dict, list[dict]]:
     model.eval()
     truths = []
     predictions = []
+    rows = []
     with torch.no_grad():
         for batch in loader:
             pre = batch["pre"].to(device)
             post = batch["post"].to(device)
             logits = model(pre, post)
-            predictions.extend(logits.argmax(dim=-1).cpu().tolist())
+            batch_predictions = logits.argmax(dim=-1).cpu().tolist()
+            predictions.extend(batch_predictions)
             truths.extend(batch["label"].tolist())
-    return classification_metrics(truths, predictions)
+            image_ids = list(batch.get("image_id") or [])
+            building_uids = list(batch.get("building_uid") or [])
+            for index, prediction in enumerate(batch_predictions):
+                rows.append(
+                    {
+                        "image_id": "" if index >= len(image_ids) else str(image_ids[index]),
+                        "building_uid": "" if index >= len(building_uids) else str(building_uids[index]),
+                        "prediction": int(prediction),
+                        "label": int(batch["label"][index]),
+                    }
+                )
+    rows.sort(key=lambda row: (row["image_id"], row["building_uid"]))
+    return classification_metrics(truths, predictions), rows
+
+
+def _separate_cross_env_output(config: dict) -> None:
+    if not config.get("cross_env_check"):
+        return
+    training_dir = config.get("training_output_dir")
+    output_dir = config.get("output_dir")
+    if not training_dir or not output_dir:
+        raise ConfigError("--cross-env-check needs the fold training directory and a separate output_dir.")
+    if Path(output_dir).resolve() == Path(training_dir).resolve():
+        raise ConfigError(
+            "--cross-env-check must write to a different directory than the fold training output "
+            f"({training_dir})."
+        )
+
+
+def _per_event_counts(rows: list[dict], truths_by_key) -> dict:
+    del truths_by_key
+    grouped: dict[str, dict[str, int]] = {}
+    for row in rows:
+        event = str(row.get("disaster") or "")
+        slot = grouped.setdefault(event, {"count": 0, "correct": 0})
+        slot["count"] += 1
+        if row.get("label") is not None and int(row["prediction"]) == int(row["label"]):
+            slot["correct"] += 1
+    return {
+        event: {
+            "count": slot["count"],
+            "accuracy": slot["correct"] / slot["count"] if slot["count"] else 0.0,
+        }
+        for event, slot in sorted(grouped.items())
+    }

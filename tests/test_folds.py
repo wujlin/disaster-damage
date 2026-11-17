@@ -36,7 +36,6 @@ from mvbridge.data.folds import (
     write_manifest,
 )
 from mvbridge.engine.eval import assert_checkpoint_fold
-from mvbridge.engine.runtime import assert_pinned_torch, torch_release
 from mvbridge.data.xbd import XBDBuildingDataset
 from mvbridge.errors import ConfigError, DataError
 
@@ -643,15 +642,6 @@ def test_host_paths_and_shared_pins_apply_without_gpu_changes(tmp_path):
     )
     with pytest.raises(ConfigError, match="does not match the shared pin"):
         load_folds(bad)
-
-
-def test_torch_pin_rejects_a_different_release():
-    logger = _logger()
-    pinned = torch_release(__import__("torch").__version__)
-    assert_pinned_torch({"torch_version": pinned, "batch_size": 32, "amp_dtype": "bfloat16"}, logger)
-    with pytest.raises(ConfigError, match="does not match the pinned"):
-        assert_pinned_torch({"torch_version": "0.0.1", "batch_size": 32, "amp_dtype": "bfloat16"}, logger)
-    assert torch_release("2.15.0+cu124") == "2.15.0"
 
 
 def test_dry_run_names_the_fold_and_skips_the_manifest(capsys):

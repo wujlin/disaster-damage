@@ -24,7 +24,7 @@ from mvbridge.data.folds import (
 )
 from mvbridge.data.xbd import XBDBuildingDataset
 from mvbridge.errors import ConfigError
-from mvbridge.engine.runtime import assert_pinned_torch, autocast_for
+from mvbridge.engine.runtime import autocast_for, record_run_env
 from mvbridge.models.baseline import build_baseline, save_checkpoint
 from mvbridge.models.pathways import prepare_local_backbone
 
@@ -32,7 +32,8 @@ from mvbridge.models.pathways import prepare_local_backbone
 def run_training(config: dict, logger, *, dry_run: bool = False, max_steps: int | None = None) -> dict:
     if config.get("fold"):
         apply_fold_data_paths(config, resolve_fold(config))
-        assert_pinned_torch(config, logger)
+        if config.get("output_dir"):
+            config["training_output_dir"] = config["output_dir"]
     if dry_run:
         if config.get("fold"):
             fold = resolve_fold(config)
@@ -43,6 +44,8 @@ def run_training(config: dict, logger, *, dry_run: bool = False, max_steps: int 
                 list(fold.holdout_events),
             )
         return dry_run_forward(config, logger)
+    if config.get("output_dir"):
+        record_run_env(config["output_dir"], logger)
     prepare_local_backbone(config, logger)
     data_cfg = config.get("data") or {}
     if not data_cfg.get("root"):

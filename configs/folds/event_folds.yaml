@@ -53,8 +53,9 @@ weight_provenance:
   hf_revision: 4685c99dabffe5affac90bd99dbffd25801ae58d
   upstream: https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth
 
-# One pin for every fold and every GPU. Do not give the 4090 and the 5880
-# different batch sizes or dtypes.
+# Batch size and AMP dtype are the same on every host. torch_version is not a
+# runtime gate (Jlin option b: do not unify torch). Each run records the
+# actual torch, CUDA, driver, and GPU in run_env.json.
 train:
   batch_size: 32
   amp_dtype: bfloat16

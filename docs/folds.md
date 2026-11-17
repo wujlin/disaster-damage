@@ -16,7 +16,7 @@ Every fold uses the same training pin. The GPU name does not change it.
 
 - batch size: 32
 - AMP dtype: `bfloat16`
-- torch release: `2.15.0` (a `+cu…` or `+cpu` tag is ignored; a different release stops the run)
+- torch is not pinned. WSA and WSB may use different builds. Each run writes `run_env.json` with Python, hostname, torch, CUDA (`torch.version.cuda`), GPU names, and the NVIDIA driver.
 
 Host paths are per machine. `hold` is the on-disk hold directory on both.
 
@@ -26,6 +26,8 @@ Host paths are per machine. `hold` is the on-disk hold directory on both.
 | WSA | RTX 5880 | `minus-palu-tsunami` | `/mnt/data_hdd/datasets/xbd` | `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth` | `/mnt/data_hdd/outputs/minus-palu-tsunami` |
 
 The WSA root disk is full, so the Palu fold does not write data, weights, logs, or checkpoints outside `/mnt/data_hdd`. Both weight files are the same timm conversion and the same sha256.
+
+Training, scoring, and conflict-head evaluation of one fold must see the same host, torch, CUDA, NVIDIA driver, and GPU names as that fold's `run_env.json`. A mismatch stops the score. `--cross-env-check` with a separate `--set output_dir=...` is only for measuring whether the difference changes \(\hat{Y}^{s}\). `cross-env-agree` compares the two `predictions_*.json` files. Agreement at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. Cross-fold numbers are reported per event, not pooled.
 
 The loaded file is the timm conversion `dinov2_vitb14_timm_lvd142m.pth`, 346,385,151 bytes, sha256 `6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c`. It was converted from the Facebook file `dinov2_vitb14_pretrain.pth`, 346,378,731 bytes, sha256 `0b8b82f85de91b424aded121c7e1dcc2b7bc6d0adeea651bf73a13307fad8c73`. Source: timm `timm/vit_base_patch14_dinov2.lvd142m`, Hugging Face revision `4685c99dabffe5affac90bd99dbffd25801ae58d`, upstream `https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth`. At run start the process hashes the file it loads and stops if the digest differs. `pretrained` is false when `weights_path` is set.
 

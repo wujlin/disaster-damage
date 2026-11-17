@@ -100,6 +100,8 @@ Pipeline checks, not Claim-2 evidence:
 
 Fold name, held-out event, seed, manifest sha256, and checkpoint sha256 are recorded in `docs/folds.md`. The manifest sha256 is written when the fold is applied to a data root. Checkpoint sha256 stays TBD until that head is trained. No-fold training still uses the full official train split.
 
+Torch is not unified across hosts. Each train, score, and conflict-head evaluation writes `run_env.json` (Python, hostname, torch, CUDA, GPU names, NVIDIA driver). One fold's training and scoring must match that fingerprint. `--cross-env-check` writes a separate directory and is only a comparison. Agreement of \(\hat{Y}^{s}\) at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. `minus-hurricane-michael-seed2` is a stability repeat and does not define \(U\).
+
 ## 3. Baselines
 
 Under the same hidden-photo setting (satellite imagery and footprint only; reference and any ground photo hidden), compare against:
