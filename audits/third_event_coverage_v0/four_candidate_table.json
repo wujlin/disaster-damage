@@ -7,7 +7,7 @@
   "no_predictions_or_U": true,
   "frozen_matcher_sha256": "dd23327bc372da18186b7504f56c369dcf90e95fc221cc801ff59c4b972a8ae4",
   "msbfp2_provenance": "/mnt/data_hdd/audits/third_event_coverage_v0/maxar_michael/msbfp2_provenance.json",
-  "maxar_michael_note": "MSBFP2 / USA Structures footprint matching for Maxar Michael is already complete under maxar_michael/ and was not rerun. Provenance of the MSBFP2 extract is pinned in msbfp2_provenance.json.",
+  "maxar_michael_note": "MSBFP2 / USA Structures footprint matching for Maxar Michael is already complete under maxar_michael/ and was not rerun. Provenance of the MSBFP2 extract is pinned in msbfp2_provenance.json. Maxar Open Data STAC coverage and acquisition dates for Mexico Beach / Port Saint Joe are in coverage_and_acquisition_dates.json / .md under maxar_michael/. The current ARD Open Data catalog has no Hurricane Michael collection; no catalog scenes were available to intersect with the town AOI. No imagery was downloaded; the matcher was not rerun.",
   "four_candidate_table": [
     {
       "candidate": "Santa Rosa (Tubbs) / CAL FIRE DINS",
@@ -60,5 +60,8 @@
     "harvey_fema": "/mnt/data_hdd/audits/third_event_coverage_v0/harvey_fema/summary.json",
     "florence_fema": "/mnt/data_hdd/audits/third_event_coverage_v0/florence_fema/summary.json",
     "florence_nws_dat": "/mnt/data_hdd/audits/third_event_coverage_v0/florence_nws_dat/summary.json"
-  }
+  },
+  "maxar_coverage_table": "audits/third_event_coverage_v0/maxar_michael/coverage_and_acquisition_dates.json",
+  "maxar_coverage_table_wsa": "/mnt/data_hdd/audits/third_event_coverage_v0/maxar_michael/coverage_and_acquisition_dates.json",
+  "maxar_coverage_table_updated_at_asia_shanghai": "2026-11-17 20:08:56 Asia/Shanghai (UTC+8)"
 }

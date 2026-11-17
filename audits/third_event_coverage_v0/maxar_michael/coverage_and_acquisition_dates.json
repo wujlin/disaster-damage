@@ -1,0 +1,681 @@
+{
+  "title": "Maxar catalog coverage and acquisition dates for Mexico Beach and Port Saint Joe (Hurricane Michael)",
+  "generated_at_asia_shanghai": "2026-11-17 20:08:33 Asia/Shanghai (UTC+8)",
+  "timezone": "Asia/Shanghai (UTC+8)",
+  "host": "dell-desktop",
+  "cpu_only": true,
+  "imagery_downloaded": false,
+  "matcher_rerun": false,
+  "commercial_discovery_api_queried": false,
+  "script": "/home/jinlin/projects/disaster-damage-wt/audit-third-event-coverage/scripts/audit_maxar_michael_coverage.py",
+  "script_sha256": "bd119c31ea4cf7cc7c90fb796ef688684ebccfa421aeeaba076308a52b3563fa",
+  "landfall": {
+    "calendar_date": "2018-10-10",
+    "instant_utc": "2018-10-10T17:30:00Z",
+    "instant_asia_shanghai": "2018-10-11 01:30:00 Asia/Shanghai (UTC+8)",
+    "source": "NHC TCR (Beven et al. 2019): Michael landfall near Mexico Beach ~1730 UTC 10 Oct 2018. Already recorded in audit-steer-michael/scripts/steer_michael/steer_michael_gates.py."
+  },
+  "aoi": {
+    "description": "Mexico Beach and Port Saint Joe, the only places Jlin allowed Maxar for, pending coverage+dates.",
+    "query_boxes_from_prior_extract": {
+      "mx_psj_coast": {
+        "xmin": -85.435,
+        "ymin": 29.675,
+        "xmax": -85.245,
+        "ymax": 29.958
+      },
+      "psj_outlier_north": {
+        "xmin": -85.615,
+        "ymin": 30.075,
+        "xmax": -85.599,
+        "ymax": 30.09
+      }
+    },
+    "union_envelope_wgs84": {
+      "xmin": -85.615,
+      "ymin": 29.675,
+      "xmax": -85.245,
+      "ymax": 30.09,
+      "note": "Axis-aligned union of the two prior extract envelopes, including the empty gap between the coastal box and the north outlier box."
+    },
+    "steer_town_points": {
+      "path": "/mnt/data_hdd/datasets/steer_hurricane_michael/D1.1 Building Damage Assessments - StEER/HM_D2D_Building.csv",
+      "sha256": "02357b0c163242d823f1e53b483e00f46e953748f8f09fa6c3f721fc42cb2873",
+      "n_csv_rows": 736,
+      "n_town_points": 356,
+      "by_town": {
+        "Port Saint Joe": {
+          "n": 151,
+          "bounds_wgs84": {
+            "xmin": -85.607154,
+            "ymin": 29.68053169,
+            "xmax": -85.24957884,
+            "ymax": 30.082649
+          }
+        },
+        "Mexico Beach": {
+          "n": 204,
+          "bounds_wgs84": {
+            "xmin": -85.42981256,
+            "ymin": 29.92640556,
+            "xmax": -85.388774,
+            "ymax": 29.9528137
+          }
+        },
+        "Mexico beach": {
+          "n": 1,
+          "bounds_wgs84": {
+            "xmin": -85.383859,
+            "ymin": 29.920633,
+            "xmax": -85.383859,
+            "ymax": 29.920633
+          }
+        }
+      },
+      "selection": "address_locality stripped, case-insensitive Mexico Beach or Port Saint Joe (including 'Mexico beach')",
+      "bounds_wgs84": {
+        "xmin": -85.607154,
+        "ymin": 29.68053169,
+        "xmax": -85.24957884,
+        "ymax": 30.082649
+      }
+    },
+    "msbfp2_extract": {
+      "path": "/mnt/data_hdd/audits/third_event_coverage_v0/maxar_michael/ms_buildings_mx_psj.geojson",
+      "n_features": 6035,
+      "n_coordinates_visited": 34380,
+      "exists": true,
+      "sha256": "b2d2da34c1d1e8d10ebb59d4a6c9de54e69399ce6f58f646d5c6bd167a4dd2b8",
+      "bytes": 2992993,
+      "bounds_native": {
+        "xmin": -85.6151259953112,
+        "ymin": 29.6752739727488,
+        "xmax": -85.2448900222008,
+        "ymax": 30.0900290065877
+      },
+      "bounds_crs_guess": "WGS84 lon/lat (guess from coordinate range)",
+      "bounds_wgs84": {
+        "xmin": -85.6151259953112,
+        "ymin": 29.6752739727488,
+        "xmax": -85.2448900222008,
+        "ymax": 30.0900290065877
+      },
+      "n_polygons_from_provenance": 6035
+    }
+  },
+  "catalog": {
+    "root_url": "https://maxar-opendata.s3.amazonaws.com/events/catalog.json",
+    "query_time_asia_shanghai": "2026-11-17 20:08:33 Asia/Shanghai (UTC+8)",
+    "query_end_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+    "http_status": 200,
+    "ok": true,
+    "error": null,
+    "stac_version": "1.0.0",
+    "stac_id": "maxar-opendata",
+    "license": "CC-BY-NC-4.0",
+    "description": "Maxar ARD Open Data Catalog",
+    "n_child_collections": 55,
+    "child_collection_hrefs": [
+      "./BayofBengal-Cyclone-Mocha-May-23/collection.json",
+      "./Belize-Wildfires-June24/collection.json",
+      "./Brazil-Flooding-May24/collection.json",
+      "./Cyclone-Chido-Dec15/collection.json",
+      "./Cyclone-Ditwah-Sri-Lanka-Nov-2025/collection.json",
+      "./Cyclone-Senyar-Indonesia-Nov-2025/collection.json",
+      "./Cyclone-Senyar-Thailand-Nov-2025/collection.json",
+      "./Earthquake-Myanmar-March-2025/collection.json",
+      "./Emilia-Romagna-Italy-flooding-may23/collection.json",
+      "./Floods-Spain-Oct24/collection.json",
+      "./Gambia-flooding-8-11-2022/collection.json",
+      "./Hurricane-Fiona-9-19-2022/collection.json",
+      "./Hurricane-Ian-9-26-2022/collection.json",
+      "./Hurricane-Idalia-Florida-Aug23/collection.json",
+      "./Hurricane-Maria-PuertoRico-Oct-2017/collection.json",
+      "./Hurricane-Melissa-Oct-2025/collection.json",
+      "./HurricaneHelene-Oct24/collection.json",
+      "./HurricaneMilton-Oct24/collection.json",
+      "./Iceland-Volcano_Eruption-Dec-2023/collection.json",
+      "./India-Floods-Oct-2023/collection.json",
+      "./Indonesia-Earthquake22/collection.json",
+      "./Japan-Earthquake-Jan-2024/collection.json",
+      "./Kahramanmaras-turkey-earthquake-23/collection.json",
+      "./Kalehe-DRC-Flooding-5-8-23/collection.json",
+      "./Kenya-Flooding-May24/collection.json",
+      "./Libya-Floods-Sept-2023/collection.json",
+      "./Marshall-Fire-21-Update/collection.json",
+      "./Maui-Hawaii-fires-Aug-23/collection.json",
+      "./McDougallCreekWildfire-BC-Canada-Aug-23/collection.json",
+      "./Morocco-Earthquake-Sept-2023/collection.json",
+      "./Morocco-Flooding-Dec-2025/collection.json",
+      "./NWT-Canada-Aug-23/collection.json",
+      "./Nepal-Earthquake-Apr-2015/collection.json",
+      "./Nepal-Earthquake-Nov-2023/collection.json",
+      "./Nepal-Floods-Sept-2024/collection.json",
+      "./New-Zealand-Flooding23/collection.json",
+      "./Nigeria-Flooding-May-2025/collection.json",
+      "./Nigeria-Floods-Sept-2024/collection.json",
+      "./PNG-Landslide-June24/collection.json",
+      "./SmokeHouseCreek-Wildfires-Texas-Mar24/collection.json",
+      "./Sudan-flooding-8-22-2022/collection.json",
+      "./Texas-Flooding-July-2025/collection.json",
+      "./Typhoon-Kalmaegi-Nov-2025/collection.json",
+      "./Vanuatu-Earthquake-Dec17/collection.json",
+      "./WildFires-LosAngeles-Jan-2025/collection.json",
+      "./afghanistan-earthquake22/collection.json",
+      "./cyclone-emnati22/collection.json",
+      "./ghana-explosion22/collection.json",
+      "./kentucky-flooding-7-29-2022/collection.json",
+      "./pakistan-flooding22/collection.json",
+      "./shovi-georgia-landslide-8Aug23/collection.json",
+      "./southafrica-flooding22/collection.json",
+      "./tonga-volcano21/collection.json",
+      "./volcano-indonesia21/collection.json",
+      "./yellowstone-flooding22/collection.json"
+    ],
+    "michael_collection_present": false,
+    "michael_links": [],
+    "method": "HTTP GET of STAC catalog/collection/item JSON only from maxar-opendata.s3.amazonaws.com, the same public catalog used for Helene item-footprint metadata. Asset hrefs (visual, ms_analytic, pan_analytic, masks, thumbnails) were not fetched.",
+    "method_documented_in": "/home/jinlin/projects/Flood_Road_Criticality/05_code_and_configs/policies/stage0_3/helene_frame_c_packet_support_metadata_v0_42.json  sources.maxar_open_data"
+  },
+  "historical_stac_path_probes": [
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael-Oct18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Oct18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:35 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Oct-2018/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:35 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Florida-Oct18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael-Oct-2018/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:37 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/hurricane-michael-oct-18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:37 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/hurricane-michael-18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:39 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:39 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Michael-Oct18/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-2018/collection.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:41 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-2018/catalog.json",
+      "http_status": 404,
+      "ok": false,
+      "error": "HTTP 404",
+      "query_start_asia_shanghai": "2026-11-17 20:08:41 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:42 Asia/Shanghai (UTC+8)"
+    }
+  ],
+  "historical_open_data_host_probes": [
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/",
+      "http_status": null,
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "final_url": null,
+      "content_type": null,
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:42 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/pre-event/",
+      "http_status": null,
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "final_url": null,
+      "content_type": null,
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/post-event/",
+      "http_status": null,
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "final_url": null,
+      "content_type": null,
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:44 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "http://opendata.digitalglobe.com/events/hurricane-michael/",
+      "http_status": null,
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "final_url": null,
+      "content_type": null,
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:44 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.maxar.com/events/hurricane-michael/",
+      "http_status": null,
+      "ok": false,
+      "error": "URLError: [Errno -2] Name or service not known",
+      "final_url": null,
+      "content_type": null,
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://www.maxar.com/open-data/hurricane-michael",
+      "http_status": 200,
+      "ok": false,
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "content_type": "text/html; charset=UTF-8",
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:49 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar.com/open-data/hurricane-michael",
+      "http_status": 200,
+      "ok": false,
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "content_type": "text/html; charset=UTF-8",
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:49 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:52 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://www.maxar.com/open-data",
+      "http_status": 200,
+      "ok": false,
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "content_type": "text/html; charset=UTF-8",
+      "text_head": null,
+      "query_start_asia_shanghai": "2026-11-17 20:08:52 Asia/Shanghai (UTC+8)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:54 Asia/Shanghai (UTC+8)"
+    }
+  ],
+  "opendata_digitalglobe_tls_certificate": {
+    "host": "opendata.digitalglobe.com",
+    "port": 443,
+    "openssl_x509": "notBefore=Jun  6 00:00:00 2025 GMT\nnotAfter=Jun  5 23:59:59 2026 GMT\nsubject=C = US, ST = Colorado, L = Westminster, O = Maxar Technologies Inc, CN = opendata.digitalglobe.com\nissuer=C = US, O = DigiCert Inc, CN = DigiCert Global G2 TLS RSA SHA256 2020 CA1",
+    "notBefore": "Jun  6 00:00:00 2025 GMT",
+    "notAfter": "Jun  5 23:59:59 2026 GMT",
+    "subject": "C = US, ST = Colorado, L = Westminster, O = Maxar Technologies Inc, CN = opendata.digitalglobe.com",
+    "issuer": "C = US, O = DigiCert Inc, CN = DigiCert Global G2 TLS RSA SHA256 2020 CA1",
+    "dates_parsed": true,
+    "python_verified_handshake": false,
+    "ok": false,
+    "python_verified_error": "SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)"
+  },
+  "opengeos_name_list_crosscheck": {
+    "url": "https://raw.githubusercontent.com/opengeos/maxar-open-data/master/datasets.csv",
+    "role": "independent name-list check of the same public Open Data catalog; not a source of imagery",
+    "ok": true,
+    "error": null,
+    "michael_rows": 0,
+    "note": "Queried as a name-list cross-check only. The live STAC child list in this run is the authoritative source."
+  },
+  "local_index_files": {
+    "michael_maxar_opendata": {
+      "path": "/mnt/data_hdd/audits/third_event_coverage_v0/michael_maxar_opendata",
+      "exists": true,
+      "entries": [
+        "coverage_and_acquisition_dates.json",
+        "coverage_and_acquisition_dates.md"
+      ],
+      "note": "Reserved audit directory; empty of catalog index files at the start of this run."
+    },
+    "no_local_maxar_opendata_index_in_audit_tree": true
+  },
+  "scenes": [],
+  "summary": {
+    "n_scenes_in_table": 0,
+    "n_pre": 0,
+    "n_post": 0,
+    "n_unknown_date": 0,
+    "michael_collection_in_current_catalog": false,
+    "blockers": [
+      "The current Maxar Open Data STAC root catalog (https://maxar-opendata.s3.amazonaws.com/events/catalog.json) was reachable (HTTP 200) at 2026-11-17 20:08:33 Asia/Shanghai (UTC+8) but lists no Hurricane Michael child collection among 55 event collections. This is an absence in the live ARD Open Data catalog, not a failed fetch of the root catalog.",
+      "All probed historical Hurricane Michael collection.json / catalog.json paths on maxar-opendata.s3.amazonaws.com returned HTTP 404. No metadata items were retrieved from those paths.",
+      "The historical DigitalGlobe Open Data host opendata.digitalglobe.com failed TLS certificate verification (certificate notAfter=Jun  5 23:59:59 2026 GMT; today is after that date). HTTP URLs redirected to HTTPS and failed the same way. TLS was not bypassed, and no imagery or metadata was read from that host.",
+      "No Maxar Discovery / MGP / SecureWatch / API keys or accounts were found in ~/.codex/skills on DESKTOP-UQ2MLK2 or on WSA, and no MAXAR* environment variables were set. The commercial catalog at https://api.maxar.com/discovery/v1/ was not queried."
+    ]
+  },
+  "already_local_xbd_hurricane_michael_metadata": {
+    "role": "already-local xBD label metadata, NOT a Maxar Open Data catalog result and NOT used to claim MX/PSJ Maxar coverage",
+    "xbd_root": "/mnt/data_hdd/datasets/xbd",
+    "n_label_files_seen": 1100,
+    "n_unparsed": 0,
+    "pre": {
+      "n_label_files": 550,
+      "catalog_id_counts": {
+        "1030010075CC2C00": 404,
+        "103001007244C700": 146
+      },
+      "capture_date_utc_day_counts": {
+        "2017-11-29": 404,
+        "2017-10-05": 146
+      },
+      "sensor_counts": {
+        "WORLDVIEW02": 550
+      }
+    },
+    "post": {
+      "n_label_files": 550,
+      "catalog_id_counts": {
+        "105001001292E000": 550
+      },
+      "capture_date_utc_day_counts": {
+        "2018-10-13": 550
+      },
+      "sensor_counts": {
+        "GEOEYE01": 550
+      }
+    },
+    "other": {
+      "n_label_files": 0,
+      "catalog_id_counts": {},
+      "capture_date_utc_day_counts": {},
+      "sensor_counts": {}
+    },
+    "prior_town_overlap_from_footprint_matcher_summary": [
+      {
+        "tag": "usa_structures_all",
+        "all_points_outside_official_xbd_tiles": true,
+        "n_inside_official_xbd_tiles": 0,
+        "n_points": 356
+      },
+      {
+        "tag": "usa_structures_20181012",
+        "all_points_outside_official_xbd_tiles": true,
+        "n_inside_official_xbd_tiles": 0,
+        "n_points": 356
+      },
+      {
+        "tag": "microsoft_msbfp2",
+        "all_points_outside_official_xbd_tiles": true,
+        "n_inside_official_xbd_tiles": 0,
+        "n_points": 356
+      }
+    ],
+    "note": "Official xBD hurricane-michael tiles have Maxar/DigitalGlobe catalog_id and capture_date in already-local label JSON. The prior Mexico Beach / Port Saint Joe footprint-matcher run recorded that all 356 StEER town points lie outside official xBD tiles (all_points_outside_official_xbd_tiles=true). That check was not rerun. These IDs are listed only as already-local metadata; they are not Open Data catalog scenes for the town AOI."
+  },
+  "query_log": [
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/catalog.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:33 Asia/Shanghai (UTC+8)",
+      "ok": true,
+      "http_status": 200,
+      "content_type": "binary/octet-stream",
+      "final_url": "https://maxar-opendata.s3.amazonaws.com/events/catalog.json",
+      "bytes_read": 5780,
+      "query_end_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+      "json_keys": [
+        "stac_version",
+        "type",
+        "id",
+        "license",
+        "description",
+        "links"
+      ]
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael-Oct18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Oct18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:34 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:35 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Oct-2018/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:35 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-Florida-Oct18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael-Oct-2018/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:36 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:37 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/hurricane-michael-oct-18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:37 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/hurricane-michael-18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:38 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:39 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/HurricaneMichael/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:39 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Michael-Oct18/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-2018/collection.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:40 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:41 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://maxar-opendata.s3.amazonaws.com/events/Hurricane-Michael-2018/catalog.json",
+      "query_start_asia_shanghai": "2026-11-17 20:08:41 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 404,
+      "content_type": "application/xml",
+      "error": "HTTP 404",
+      "query_end_asia_shanghai": "2026-11-17 20:08:42 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/",
+      "query_start_asia_shanghai": "2026-11-17 20:08:42 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/pre-event/",
+      "query_start_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.digitalglobe.com/events/hurricane-michael/post-event/",
+      "query_start_asia_shanghai": "2026-11-17 20:08:43 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:44 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "http://opendata.digitalglobe.com/events/hurricane-michael/",
+      "query_start_asia_shanghai": "2026-11-17 20:08:44 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "error": "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1007)",
+      "query_end_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://opendata.maxar.com/events/hurricane-michael/",
+      "query_start_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "error": "URLError: [Errno -2] Name or service not known",
+      "query_end_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)"
+    },
+    {
+      "url": "https://www.maxar.com/open-data/hurricane-michael",
+      "query_start_asia_shanghai": "2026-11-17 20:08:46 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "bytes_read": 4001,
+      "query_end_asia_shanghai": "2026-11-17 20:08:49 Asia/Shanghai (UTC+8)",
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)"
+    },
+    {
+      "url": "https://maxar.com/open-data/hurricane-michael",
+      "query_start_asia_shanghai": "2026-11-17 20:08:49 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "bytes_read": 4001,
+      "query_end_asia_shanghai": "2026-11-17 20:08:52 Asia/Shanghai (UTC+8)",
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)"
+    },
+    {
+      "url": "https://www.maxar.com/open-data",
+      "query_start_asia_shanghai": "2026-11-17 20:08:52 Asia/Shanghai (UTC+8)",
+      "ok": false,
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "final_url": "https://vantor.com/company/open-data-program/",
+      "bytes_read": 4001,
+      "query_end_asia_shanghai": "2026-11-17 20:08:54 Asia/Shanghai (UTC+8)",
+      "error": "response larger than 4000 bytes; not parsed (metadata cap)"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/opengeos/maxar-open-data/master/datasets.csv",
+      "query_start_asia_shanghai": "2026-11-17 20:08:56 Asia/Shanghai (UTC+8)",
+      "ok": true,
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "final_url": "https://raw.githubusercontent.com/opengeos/maxar-open-data/master/datasets.csv",
+      "bytes_read": 1653,
+      "query_end_asia_shanghai": "2026-11-17 20:08:56 Asia/Shanghai (UTC+8)",
+      "text_head": "dataset,count\nBayofBengal-Cyclone-Mocha-May-23,206\nBelize-Wildfires-June24,90\nBrazil-Flooding-May24,824\nCyclone-Chido-Dec15,118\nCyclone-Ditwah-Sri-Lanka-Nov-2025,433\nCyclone-Senyar-Indonesia-Nov-2025,44\nCyclone-Senyar-Thailand-Nov-2025,127\nEarthquake-Myanmar-March-2025,202\nEmilia-Romagna-Italy-flooding-may23,245\nFloods-Spain-Oct24,136\nGambia-flooding-8-11-2022,80\nHurricane-Fiona-9-19-2022,274\nHurricane-Ian-9-26-2022,4207\nHurricane-Idalia-Florida-Aug23,677\nHurricane-Maria-PuertoRico-Oct-2017,46\nHurricane-Melissa-Oct-2025,8469\nHurricaneHelene-Oct24,651\nHurricaneMilton-Oct24,1066\nIceland-Volcano_Eruption-Dec-2023,32\nIndia-Floods-Oct-2023,51\nIndonesia-Earthquake22,124\nJapan-Earthquake-Jan-2024,242\nKahramanmaras-turkey-earthquake-23,2115\nKalehe-DRC-Flooding-5-8-23,24\nKenya-Flooding-May24,55\nLibya-Floods-Sept-2023,186\nMarshall-Fire-21-Update,15\nMaui-Hawaii-fires-Aug-23,123\nMcDougallCreekWildfire-BC-Canada-Aug-23,31\nMorocco-Earthquake-Sept-2023,8724\nMorocco-Flooding-Dec-2025,37\nNWT-Canada-Aug-23,86\nNepal-Earthquake-Apr-2015,12\nNepal-Earthquake-Nov-2023,697\nNepal-Floods-Sept-2024,533\nNew-Zealand-Flooding23,37\nNigeria-Flooding-May-2025,18\nNigeria-Floods-Sept-2024,18\nPNG-Landslide-June24,48\nSmokeHouseCreek-Wildfires-Texas-Mar24,782\nSudan-flooding-8-22-2022,57\nTexas-Flooding-July-2025,124\nTyphoon-Kalmaegi-Nov-2025,1420\nVanuatu-Earthquake-Dec17,18\nWildFires-LosAngeles-Jan-2025,518\nafghanistan-earthquake22,395\ncyclone-emnati22,794\nghana-explosion22,223\nkentucky-flooding-7-29-2022,185\npaki"
+    }
+  ]
+}
