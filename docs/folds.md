@@ -4,7 +4,11 @@ The satellite damage head is DINOv2 ViT-B/14, seed 1. A fold holds one reference
 
 For one fold head, every image of the held-out event is removed from official train, test, and hold. The count of that disaster name in each of those splits is asserted to be 0. Those images are a separate eval set (`fold-eval`). They are not train, val, or that head's in-fold test/hold. This repo calls the hold split `holdout`. Point `data.split_dirs.holdout` at `hold` when the release uses that directory name.
 
-`minus-hurricane-michael` is the main seed-1 fold. `minus-palu-tsunami` is the second reference fold and is enabled. `minus-santa-rosa` (`santa-rosa-wildfire`) and `minus-socal` (`socal-fire`) are pipeline checks. Santa Rosa and Woolsey/socal are a wildfire pipeline check, not Claim-2 evidence. A head that has seen an event must not produce the satellite grade for buildings in that event.
+`minus-hurricane-michael` is the main seed-1 fold. It runs on WSB GPU 1. `minus-hurricane-michael-seed2` is the same hold-out at seed 2 and runs on WSB GPU 0. The seed is a config entry, not a CLI override. Its checkpoints go to `/data/repo/outputs/minus-hurricane-michael-seed2`. Both entries hold out `hurricane-michael`, so automatic routing refuses to average them. Train and score one of them by name with `--fold`.
+
+`minus-palu-tsunami` is the second reference fold and is enabled. `claim_evidence: true` on the Palu fold only means this head is usable for later scoring. Palu's mapping is not frozen and its four diagnostic gates have not passed, so Palu U must not be computed yet and Palu results are not Claim-2 evidence.
+
+`minus-santa-rosa` (`santa-rosa-wildfire`) and `minus-socal` (`socal-fire`) are pipeline checks. Santa Rosa and Woolsey/socal are a wildfire pipeline check, not Claim-2 evidence. A head that has seen an event must not produce the satellite grade for buildings in that event.
 
 No-fold training is the full official train split. Pass `--fold` only for a fold run.
 
@@ -18,7 +22,7 @@ Host paths are per machine. `hold` is the on-disk hold directory on both.
 
 | Host | GPU | Fold | Data | Weights | Outputs and checkpoints |
 | --- | --- | --- | --- | --- | --- |
-| WSB | RTX 4090 | `minus-hurricane-michael`, pipeline checks | `/data/repo/datasets/xbd` | `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth` | `/data/repo/outputs/<fold>` |
+| WSB | RTX 4090 | `minus-hurricane-michael` (GPU 1, seed 1), `minus-hurricane-michael-seed2` (GPU 0, seed 2), pipeline checks | `/data/repo/datasets/xbd` | `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth` | `/data/repo/outputs/<fold>` |
 | WSA | RTX 5880 | `minus-palu-tsunami` | `/mnt/data_hdd/datasets/xbd` | `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth` | `/mnt/data_hdd/outputs/minus-palu-tsunami` |
 
 The WSA root disk is full, so the Palu fold does not write data, weights, logs, or checkpoints outside `/mnt/data_hdd`. Both weight files are the same timm conversion and the same sha256.
@@ -30,8 +34,11 @@ The loaded file is the timm conversion `dinov2_vitb14_timm_lvd142m.pth`, 346,385
 From the repository root, with xBD mounted outside the work tree:
 
 ```bash
-# WSB (RTX 4090). Paths come from the fold file.
+# WSB GPU 1, seed 1. Paths come from the fold file.
 python -m mvbridge train-xbd --fold minus-hurricane-michael
+
+# WSB GPU 0, seed 2. Same hold-out, separate output directory.
+python -m mvbridge train-xbd --fold minus-hurricane-michael-seed2
 
 # WSA (RTX 5880). Data, weights, and checkpoints stay under /mnt/data_hdd.
 python -m mvbridge train-xbd --fold minus-palu-tsunami
@@ -62,6 +69,7 @@ Manifest sha256 is filled from the training log after a real xBD root is read. C
 | Fold | Role | Held-out `metadata.disaster` | Seed | Manifest sha256 | Checkpoint sha256 |
 | --- | --- | --- | --- | --- | --- |
 | `minus-hurricane-michael` | main | `hurricane-michael` | 1 | TBD | TBD |
+| `minus-hurricane-michael-seed2` | main (repeat) | `hurricane-michael` | 2 | TBD | TBD |
 | `minus-palu-tsunami` | secondary | `palu-tsunami` | 1 | TBD | TBD |
 | `minus-santa-rosa` | pipeline-check | `santa-rosa-wildfire` | 1 | TBD | TBD |
 | `minus-socal` | pipeline-check | `socal-fire` | 1 | TBD | TBD |

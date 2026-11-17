@@ -99,9 +99,39 @@ folds:
       weights_bytes: 346385151
       pretrained: false
     notes: >
-      MAIN seed-1 fold. Runs on WSB (RTX 4090). Hold out hurricane-michael.
+      MAIN seed-1 fold. Runs on WSB GPU 1 (RTX 4090). Hold out hurricane-michael.
       A head that has seen Michael must not produce the satellite damage
       grade for Michael buildings.
+
+  # Same hold-out as minus-hurricane-michael. WSB GPU 0 runs this entry.
+  # Seed and output directory are the only differences. Not a CLI override.
+  - name: minus-hurricane-michael-seed2
+    holdout_events:
+      - hurricane-michael
+    role: main
+    enabled: true
+    claim_evidence: true
+    seed: 2
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsb
+    batch_size: 32
+    amp_dtype: bfloat16
+    torch_version: "2.15.0"
+    output_dir: /data/repo/outputs/minus-hurricane-michael-seed2
+    data:
+      root: /data/repo/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      Repeat of the Michael hold-out at seed 2. Runs on WSB GPU 0.
+      Same event, paths, batch size, AMP dtype, torch pin, and weight sha256
+      as minus-hurricane-michael. Checkpoints go to a separate output directory.
 
   - name: minus-palu-tsunami
     holdout_events:

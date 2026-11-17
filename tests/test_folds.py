@@ -138,7 +138,13 @@ def test_shipped_folds_are_an_appendable_list():
     assert socal.role == "pipeline-check"
     assert socal.claim_evidence is False
     assert socal.holdout_events == ("socal-fire",)
-    assert all(fold.seed == 1 for fold in folds)
+    seed2 = by_name["minus-hurricane-michael-seed2"]
+    assert seed2.seed == 2
+    assert seed2.holdout_events == michael.holdout_events
+    assert seed2.output_dir == "/data/repo/outputs/minus-hurricane-michael-seed2"
+    assert seed2.output_dir != michael.output_dir
+    assert {fold.name: fold.seed for fold in folds if fold.seed == 1}[michael.name] == 1
+    assert all(fold.seed == 1 for fold in folds if fold.name != "minus-hurricane-michael-seed2")
     provenance = load_yaml(FOLDS)["weight_provenance"]
     timm_sha = "6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c"
     facebook_sha = "0b8b82f85de91b424aded121c7e1dcc2b7bc6d0adeea651bf73a13307fad8c73"
@@ -171,12 +177,45 @@ def test_shipped_folds_are_an_appendable_list():
         assert fold.batch_size == 32
         assert fold.amp_dtype == "bfloat16"
         assert fold.torch_version == "2.15.0"
-    assert palu.batch_size == michael.batch_size
-    assert palu.amp_dtype == michael.amp_dtype
-    assert palu.torch_version == michael.torch_version
+    assert palu.batch_size == michael.batch_size == seed2.batch_size
+    assert palu.amp_dtype == michael.amp_dtype == seed2.amp_dtype
+    assert palu.torch_version == michael.torch_version == seed2.torch_version == "2.15.0"
+    assert seed2.weights_sha256 == michael.weights_sha256 == timm_sha
+    assert seed2.holdout_dirname == michael.holdout_dirname == "hold"
+    assert seed2.host == "wsb"
+    assert seed2.data_root == michael.data_root
+    assert seed2.weights_path == michael.weights_path
     default = load_yaml(ROOT / "configs" / "xbd_dinov2_vitb.yaml")
     assert "fold" not in default
     assert default["seed"] == 0
+
+
+def test_michael_seed2_holdout_matches_seed1(tmp_path):
+    root = tmp_path / "xbd"
+    _populate(root)
+    split_dirs = _data_config(root)["split_dirs"]
+    tiles = index_official_tiles(root, split_dirs)
+    folds = {fold.name: fold for fold in load_folds(FOLDS)}
+    seed1 = folds["minus-hurricane-michael"]
+    seed2 = folds["minus-hurricane-michael-seed2"]
+    assert seed1.seed == 1
+    assert seed2.seed == 2
+    assert seed2.holdout_events == seed1.holdout_events == ("hurricane-michael",)
+    assert seed2.batch_size == seed1.batch_size == 32
+    assert seed2.amp_dtype == seed1.amp_dtype == "bfloat16"
+    assert seed2.torch_version == seed1.torch_version == "2.15.0"
+    assert seed2.weights_sha256 == seed1.weights_sha256
+    assert seed2.holdout_dirname == seed1.holdout_dirname == "hold"
+    assert seed2.output_dir == "/data/repo/outputs/minus-hurricane-michael-seed2"
+    manifest = finalize_manifest(build_manifest(seed2, tiles, split_dirs))
+    kept = {split: kept_tiles(records, seed2.holdout_events) for split, records in tiles.items()}
+    assert_zero_holdout(kept, seed2)
+    for split in ("train", "test", "holdout"):
+        assert manifest["per_event_counts"][split]["hurricane-michael"]["used"] == 0
+        assert manifest["splits"][split]["held_out_image_ids"]
+        assert set(manifest["splits"][split]["used_image_ids"]).isdisjoint(
+            set(manifest["splits"][split]["held_out_image_ids"])
+        )
 
 
 def test_holdout_event_is_absent_and_other_events_stay(tmp_path):
@@ -324,18 +363,26 @@ def test_fold_eval_set_is_only_the_held_out_event(tmp_path):
 
 def test_oof_routing_never_uses_a_seen_event_head():
     folds = load_folds(FOLDS)
-    michael = select_oof_head("hurricane-michael", folds, claim_only=True)
+    by_name = {fold.name: fold for fold in folds}
+    michael = by_name["minus-hurricane-michael"]
+    michael_seed2 = by_name["minus-hurricane-michael-seed2"]
     palu = select_oof_head("palu-tsunami", folds, claim_only=True)
-    assert michael.name == "minus-hurricane-michael"
     assert palu.name == "minus-palu-tsunami"
     assert [fold.name for fold in route_oof("hurricane-michael", folds, claim_only=False)] == [
-        "minus-hurricane-michael"
+        "minus-hurricane-michael",
+        "minus-hurricane-michael-seed2",
     ]
+    with pytest.raises(ConfigError, match="Refusing to average"):
+        select_oof_head("hurricane-michael", folds, claim_only=True)
+    assert_head_may_score(michael, "hurricane-michael")
+    assert_head_may_score(michael_seed2, "hurricane-michael")
     assert [fold.name for fold in route_oof("palu-tsunami", folds, claim_only=False)] == ["minus-palu-tsunami"]
     with pytest.raises(ConfigError, match="must not produce"):
         assert_head_may_score(palu, "hurricane-michael")
     with pytest.raises(ConfigError, match="must not produce"):
         assert_head_may_score(michael, "palu-tsunami")
+    with pytest.raises(ConfigError, match="must not produce"):
+        assert_head_may_score(michael_seed2, "palu-tsunami")
     with pytest.raises(ConfigError, match="No enabled fold"):
         select_oof_head("hurricane-harvey", folds, claim_only=True)
     with pytest.raises(ConfigError, match="No enabled fold"):
@@ -359,7 +406,8 @@ def test_appended_fold_routes_without_a_router_change(tmp_path):
     )
     folds = load_folds(FOLDS) + (extra,)
     assert select_oof_head("hurricane-florence", folds, claim_only=True).name == "minus-hurricane-florence"
-    assert select_oof_head("hurricane-michael", folds, claim_only=True).name == "minus-hurricane-michael"
+    with pytest.raises(ConfigError, match="Refusing to average"):
+        select_oof_head("hurricane-michael", folds, claim_only=True)
     with pytest.raises(ConfigError, match="must not produce"):
         assert_head_may_score(extra, "hurricane-michael")
     text = FOLDS.read_text(encoding="utf-8") + (
@@ -395,7 +443,10 @@ def test_plan_oof_skips_events_no_head_held_out(tmp_path):
     root = tmp_path / "xbd"
     groups = _populate(root)
     tiles = [record for records in index_official_tiles(root, _data_config(root)["split_dirs"]).values() for record in records]
-    groups_by_head = plan_oof(tiles, load_folds(FOLDS), claim_only=True)
+    with pytest.raises(ConfigError, match="Refusing to average"):
+        plan_oof(tiles, load_folds(FOLDS), claim_only=True)
+    seed1_folds = tuple(fold for fold in load_folds(FOLDS) if fold.name != "minus-hurricane-michael-seed2")
+    groups_by_head = plan_oof(tiles, seed1_folds, claim_only=True)
     michael_ids = set(groups_by_head["minus-hurricane-michael"])
     palu_ids = set(groups_by_head["minus-palu-tsunami"])
     assert michael_ids == groups["michael"]
@@ -406,7 +457,7 @@ def test_plan_oof_skips_events_no_head_held_out(tmp_path):
     assert groups["santa"].isdisjoint(assigned)
     assert groups["socal"].isdisjoint(assigned)
     assert "minus-santa-rosa" not in groups_by_head
-    with_checks = plan_oof(tiles, load_folds(FOLDS), claim_only=False)
+    with_checks = plan_oof(tiles, seed1_folds, claim_only=False)
     assert set(with_checks["minus-santa-rosa"]) == groups["santa"]
     assert set(with_checks["minus-socal"]) == groups["socal"]
 
@@ -430,13 +481,18 @@ def test_disabled_fold_is_skipped_and_rejected(tmp_path):
 
 
 def test_oof_route_cli(capsys):
-    code = main(["oof-route", "--disaster", "hurricane-michael", "--folds", str(FOLDS)])
+    code = main(["oof-route", "--disaster", "palu-tsunami", "--folds", str(FOLDS)])
     assert code == 0
     output = capsys.readouterr().out
-    assert "fold=minus-hurricane-michael" in output
+    assert "fold=minus-palu-tsunami" in output
     assert "seed=1" in output
     assert "averaged=false" in output
-    assert "minus-palu-tsunami" not in output
+    assert "minus-hurricane-michael" not in output
+    both_seeds = main(["oof-route", "--disaster", "hurricane-michael", "--folds", str(FOLDS)])
+    assert both_seeds == 2
+    refused_text = capsys.readouterr().out
+    assert "Refusing to average" in refused_text
+    assert "minus-hurricane-michael-seed2" in refused_text
     refused = main(["oof-route", "--disaster", "hurricane-harvey", "--folds", str(FOLDS)])
     assert refused == 2
     pipeline = main(["oof-route", "--disaster", "santa-rosa-wildfire", "--folds", str(FOLDS)])
