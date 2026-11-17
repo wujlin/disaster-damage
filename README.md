@@ -6,6 +6,7 @@ Two pathways stay separate. The identity/geometry pathway is where a later multi
 
 This repository does not download datasets or checkpoints, and it does not start training on import. The ViT-B entry point is a frozen DINOv2 probe with a small damage head. There is no ViT-L setup.
 
+[Evaluation protocol](docs/eval_protocol.md)
 ## Layout
 
 ```
