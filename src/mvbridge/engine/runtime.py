@@ -129,8 +129,8 @@ def require_same_fold_env(config: dict, logger, current: dict) -> dict | None:
 
 def prediction_agreement(left: list[dict], right: list[dict]) -> dict:
     """Agreement of satellite grades, overall and stratified by event."""
-    left_map = {_prediction_key(row): row for row in left}
-    right_map = {_prediction_key(row): row for row in right}
+    left_map = _index_predictions(left)
+    right_map = _index_predictions(right)
     shared = sorted(set(left_map) & set(right_map))
     if not shared:
         raise DataError("The two prediction files have no image and building in common.")
@@ -146,13 +146,17 @@ def prediction_agreement(left: list[dict], right: list[dict]) -> dict:
     compared = len(shared)
     rate = matched / compared
     per_event_out = {}
+    failed = []
     for event, slot in sorted(per_event.items()):
+        agreement = slot["matched"] / slot["compared"]
         per_event_out[event] = {
             "compared": slot["compared"],
             "matched": slot["matched"],
-            "agreement": slot["matched"] / slot["compared"],
+            "agreement": agreement,
         }
-    no_effect = rate >= AGREEMENT_NO_EFFECT
+        if agreement < AGREEMENT_NO_EFFECT:
+            failed.append(event)
+    no_effect = not failed
     return {
         "compared": compared,
         "matched": matched,
@@ -160,6 +164,7 @@ def prediction_agreement(left: list[dict], right: list[dict]) -> dict:
         "threshold": AGREEMENT_NO_EFFECT,
         "no_effect": no_effect,
         "per_event": per_event_out,
+        "failed_events": failed,
         "annotation": (
             None
             if no_effect
@@ -168,8 +173,24 @@ def prediction_agreement(left: list[dict], right: list[dict]) -> dict:
     }
 
 
+def _index_predictions(rows: list[dict]) -> dict[tuple[str, str], dict]:
+    indexed = {}
+    for row in rows:
+        key = _prediction_key(row)
+        if key in indexed:
+            raise DataError(f"Duplicate prediction key image_id={key[0]!r} building_uid={key[1]!r}.")
+        indexed[key] = row
+    return indexed
+
+
 def _prediction_key(row: dict) -> tuple[str, str]:
-    return (str(row.get("image_id") or ""), str(row.get("building_uid") or ""))
+    image_id = row.get("image_id")
+    building_uid = row.get("building_uid")
+    if image_id is None or str(image_id).strip() == "":
+        raise DataError("A prediction row is missing image_id.")
+    if building_uid is None or str(building_uid).strip() == "":
+        raise DataError("A prediction row is missing building_uid.")
+    return (str(image_id), str(building_uid))
 
 
 def _gpu_names() -> list[str]:

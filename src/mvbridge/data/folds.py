@@ -72,7 +72,7 @@ def _load_train_pin(data: dict, file_path: Path) -> dict:
         return {}
     if not isinstance(raw, dict):
         raise ConfigError(f"train in {file_path} must be a mapping")
-    for key in ("batch_size", "amp_dtype", "torch_version"):
+    for key in ("batch_size", "amp_dtype"):
         if key not in raw:
             raise ConfigError(f"train.{key} is required in {file_path}")
     batch_size = raw["batch_size"]
@@ -81,11 +81,13 @@ def _load_train_pin(data: dict, file_path: Path) -> dict:
     amp_dtype = _optional_amp(raw["amp_dtype"])
     if amp_dtype is None:
         raise ConfigError(f"train.amp_dtype must be bfloat16 or float16 in {file_path}")
-    return {
+    pin = {
         "batch_size": int(batch_size),
         "amp_dtype": amp_dtype,
-        "torch_version": str(raw["torch_version"]).strip(),
     }
+    if raw.get("torch_version"):
+        pin["torch_version"] = str(raw["torch_version"]).strip()
+    return pin
 
 
 def _load_hosts(data: dict, file_path: Path) -> dict[str, HostSpec]:

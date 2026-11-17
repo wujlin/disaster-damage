@@ -169,7 +169,7 @@ Leave-one-reference-event-out training passes `--fold`. The default command abov
 python -m mvbridge train-xbd --fold minus-hurricane-michael
 ```
 
-On WSB the Michael fold reads `/data/repo/datasets/xbd` and `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and writes `/data/repo/outputs/minus-hurricane-michael`. On WSA the Palu fold uses `/mnt/data_hdd/datasets/xbd`, `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and `/mnt/data_hdd/outputs/minus-palu-tsunami`. Both folds pin batch size 32, AMP `bfloat16`, and torch `2.15.0`. The run logs the real torch, CUDA, and GPU name and stops if the torch release differs. It does not change the pin for the 4090 or the 5880. `python -m mvbridge oof-route --disaster hurricane-michael` prints the head that may score Michael buildings. It does not average heads.
+On WSB the Michael fold reads `/data/repo/datasets/xbd` and `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and writes `/data/repo/outputs/minus-hurricane-michael`. On WSA the Palu fold uses `/mnt/data_hdd/datasets/xbd`, `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and `/mnt/data_hdd/outputs/minus-palu-tsunami`. Both folds pin batch size 32 and AMP `bfloat16`. Torch is recorded in `run_env.json` and is not checked against a shared version. The 4090 and the 5880 do not change the batch size or the AMP dtype. `python -m mvbridge oof-route --disaster hurricane-michael` prints the head that may score Michael buildings. It does not average heads.
 
 Image size must be a multiple of 14. The default 224 is a short-side probe; 518 matches the DINOv2 training resolution and is a config change, not a different backbone. `vit_large_*` is rejected.
 

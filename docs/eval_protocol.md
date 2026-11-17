@@ -100,7 +100,7 @@ Pipeline checks, not Claim-2 evidence:
 
 Fold name, held-out event, seed, manifest sha256, and checkpoint sha256 are recorded in `docs/folds.md`. The manifest sha256 is written when the fold is applied to a data root. Checkpoint sha256 stays TBD until that head is trained. No-fold training still uses the full official train split.
 
-Torch is not unified across hosts. Each train, score, and conflict-head evaluation writes `run_env.json` (Python, hostname, torch, CUDA, GPU names, NVIDIA driver). One fold's training and scoring must match that fingerprint. `--cross-env-check` writes a separate directory and is only a comparison. Agreement of \(\hat{Y}^{s}\) at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. `minus-hurricane-michael-seed2` is a stability repeat and does not define \(U\).
+Torch is not unified across hosts. Each train, score, and conflict-head evaluation writes `run_env.json` (Python, hostname, torch, CUDA, GPU names, NVIDIA driver). One fold's training and scoring must match that fingerprint. `--cross-env-check` writes a separate directory and is only a comparison. Agreement of \(\hat{Y}^{s}\) is judged per event. `no_effect` is true only when every event is at or above 99%. If any event is below 99%, Palu-fold results are annotated with the version difference. `minus-hurricane-michael-seed2` is a stability repeat and does not define \(U\).
 
 ## 3. Baselines
 
@@ -299,3 +299,4 @@ P7 reports P2–P5 under the frozen mappings and under the conservative mappings
 - 2026-11-17, a fold's training, scoring, and conflict-head evaluation must use the same host, torch, CUDA, driver, and GPU names. A mismatch is refused unless `--cross-env-check` writes a separate directory.
 - 2026-11-17, cross-env agreement of \(\hat{Y}^{s}\) at or above 99% counts as no effect. Below 99%, Palu-fold results are annotated with the version difference. Results stay stratified by event.
 - 2026-11-17, `minus-hurricane-michael-seed2` is a stability repeat (`role: seed-repeat`, `claim_evidence: false`, seed 2). It does not define \(U\). Default routing uses the seed-1 Michael head only.
+- 2026-11-17, removed the unused `torch_version` field. Cross-env `no_effect` is true only when every event's agreement is at least 99%; the summary lists per-event agreement and the events that fail. A prediction row must have `image_id` and `building_uid`, and those keys must be unique.

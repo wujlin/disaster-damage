@@ -53,13 +53,12 @@ weight_provenance:
   hf_revision: 4685c99dabffe5affac90bd99dbffd25801ae58d
   upstream: https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth
 
-# Batch size and AMP dtype are the same on every host. torch_version is not a
-# runtime gate (Jlin option b: do not unify torch). Each run records the
-# actual torch, CUDA, driver, and GPU in run_env.json.
+# Batch size and AMP dtype are the same on every host. Torch is not pinned
+# (Jlin option b). Each run records the actual torch, CUDA, driver, and GPU
+# in run_env.json.
 train:
   batch_size: 32
   amp_dtype: bfloat16
-  torch_version: "2.15.0"
 
 hosts:
   wsb:
@@ -88,7 +87,6 @@ folds:
     host: wsb
     batch_size: 32
     amp_dtype: bfloat16
-    torch_version: "2.15.0"
     output_dir: /data/repo/outputs/minus-hurricane-michael
     data:
       root: /data/repo/datasets/xbd
@@ -119,7 +117,6 @@ folds:
     host: wsb
     batch_size: 32
     amp_dtype: bfloat16
-    torch_version: "2.15.0"
     output_dir: /data/repo/outputs/minus-hurricane-michael-seed2
     data:
       root: /data/repo/datasets/xbd
@@ -149,7 +146,6 @@ folds:
     host: wsa
     batch_size: 32
     amp_dtype: bfloat16
-    torch_version: "2.15.0"
     output_dir: /mnt/data_hdd/outputs/minus-palu-tsunami
     data:
       root: /mnt/data_hdd/datasets/xbd
@@ -177,7 +173,6 @@ folds:
     host: wsb
     batch_size: 32
     amp_dtype: bfloat16
-    torch_version: "2.15.0"
     output_dir: /data/repo/outputs/minus-santa-rosa
     data:
       root: /data/repo/datasets/xbd
@@ -204,7 +199,6 @@ folds:
     host: wsb
     batch_size: 32
     amp_dtype: bfloat16
-    torch_version: "2.15.0"
     output_dir: /data/repo/outputs/minus-socal
     data:
       root: /data/repo/datasets/xbd

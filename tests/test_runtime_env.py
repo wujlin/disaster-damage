@@ -122,6 +122,38 @@ def test_cross_env_check_requires_a_separate_output_dir():
     assert code == 2
 
 
+def test_no_effect_requires_every_event(tmp_path):
+    big = [
+        {"image_id": f"big_{index}", "building_uid": "b", "disaster": "hurricane-michael", "prediction": 0}
+        for index in range(200)
+    ]
+    small_left = [
+        {"image_id": "small_0", "building_uid": "b", "disaster": "palu-tsunami", "prediction": 1},
+        {"image_id": "small_1", "building_uid": "b", "disaster": "palu-tsunami", "prediction": 1},
+    ]
+    small_right = [
+        {"image_id": "small_0", "building_uid": "b", "disaster": "palu-tsunami", "prediction": 1},
+        {"image_id": "small_1", "building_uid": "b", "disaster": "palu-tsunami", "prediction": 0},
+    ]
+    report = prediction_agreement(big + small_left, big + small_right)
+    assert report["agreement"] == pytest.approx(201 / 202)
+    assert report["agreement"] >= AGREEMENT_NO_EFFECT
+    assert report["per_event"]["hurricane-michael"]["agreement"] == pytest.approx(1.0)
+    assert report["per_event"]["palu-tsunami"]["agreement"] == pytest.approx(0.5)
+    assert report["failed_events"] == ["palu-tsunami"]
+    assert report["no_effect"] is False
+
+
+def test_prediction_keys_must_be_present_and_unique():
+    complete = {"image_id": "img", "building_uid": "b1", "disaster": "hurricane-michael", "prediction": 0}
+    with pytest.raises(DataError, match="image_id"):
+        prediction_agreement([{"building_uid": "b1", "prediction": 0}], [complete])
+    with pytest.raises(DataError, match="building_uid"):
+        prediction_agreement([{"image_id": "img", "prediction": 0}], [complete])
+    with pytest.raises(DataError, match="Duplicate"):
+        prediction_agreement([complete, dict(complete)], [complete])
+
+
 def test_prediction_agreement_is_stratified_and_uses_99_percent(tmp_path, capsys):
     left = {
         "records": [

@@ -197,6 +197,7 @@ def _cross_env_agree(args) -> int:
     for event, slot in report["per_event"].items():
         label = event or "(missing-event)"
         print(f"event={label} compared={slot['compared']} agreement={slot['agreement']:.6f}")
+    print("failed_events=" + ",".join(report["failed_events"]))
     if report["annotation"]:
         print(f"annotation={report['annotation']}")
     return 0

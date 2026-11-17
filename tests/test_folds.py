@@ -178,10 +178,12 @@ def test_shipped_folds_are_an_appendable_list():
         assert fold.weights_bytes == 346385151
         assert fold.batch_size == 32
         assert fold.amp_dtype == "bfloat16"
-        assert fold.torch_version == "2.15.0"
+        assert fold.torch_version is None
     assert palu.batch_size == michael.batch_size == seed2.batch_size
     assert palu.amp_dtype == michael.amp_dtype == seed2.amp_dtype
-    assert palu.torch_version == michael.torch_version == seed2.torch_version == "2.15.0"
+    assert palu.torch_version is None
+    assert michael.torch_version is None
+    assert seed2.torch_version is None
     assert seed2.weights_sha256 == michael.weights_sha256 == timm_sha
     assert seed2.holdout_dirname == michael.holdout_dirname == "hold"
     assert seed2.host == "wsb"
@@ -207,7 +209,8 @@ def test_michael_seed2_holdout_matches_seed1(tmp_path):
     assert seed2.holdout_events == seed1.holdout_events == ("hurricane-michael",)
     assert seed2.batch_size == seed1.batch_size == 32
     assert seed2.amp_dtype == seed1.amp_dtype == "bfloat16"
-    assert seed2.torch_version == seed1.torch_version == "2.15.0"
+    assert seed2.torch_version is None
+    assert seed1.torch_version is None
     assert seed2.weights_sha256 == seed1.weights_sha256
     assert seed2.holdout_dirname == seed1.holdout_dirname == "hold"
     assert seed2.output_dir == "/data/repo/outputs/minus-hurricane-michael-seed2"
@@ -549,7 +552,6 @@ def test_unknown_fold_and_seed_override_do_not_train(tmp_path, capsys):
         "train:\n"
         "  batch_size: 32\n"
         "  amp_dtype: bfloat16\n"
-        '  torch_version: "2.15.0"\n'
         "hosts:\n"
         "  local:\n"
         "    gpu: none\n"
@@ -619,7 +621,8 @@ def test_host_paths_and_shared_pins_apply_without_gpu_changes(tmp_path):
     assert palu_cfg["backbone"]["weights_sha256"] == michael_cfg["backbone"]["weights_sha256"]
     assert palu_cfg["batch_size"] == michael_cfg["batch_size"] == 32
     assert palu_cfg["amp_dtype"] == michael_cfg["amp_dtype"] == "bfloat16"
-    assert palu_cfg["torch_version"] == michael_cfg["torch_version"] == "2.15.0"
+    assert palu_cfg.get("torch_version") is None
+    assert michael_cfg.get("torch_version") is None
     # A CLI output_dir does not move the Palu checkpoints onto the root disk.
     palu_cfg["output_dir"] = "/tmp/on-the-root-disk"
     apply_fold_data_paths(palu_cfg, folds["minus-palu-tsunami"])
@@ -629,7 +632,6 @@ def test_host_paths_and_shared_pins_apply_without_gpu_changes(tmp_path):
         "train:\n"
         "  batch_size: 32\n"
         "  amp_dtype: bfloat16\n"
-        '  torch_version: "2.15.0"\n'
         "folds:\n"
         "  - name: minus-other\n"
         "    holdout_events: [hurricane-florence]\n"
