@@ -22,9 +22,15 @@ A uniquely matched point just outside the tile polygon is kept in Q and flagged
 (gate 2 is the unique-footprint rule; the footprint is inside the tile). Multi-point
 footprints that disagree on a scale are dropped from that scale's Y only, not from Q.
 Wind grades 3/4 are landed from existing component fields for reporting only; this
-does not drop buildings from Q. Grade 4 is not mapped to destroyed, and no
-percentage threshold is proposed. summary.json is written entirely by this script
-and is deterministic (no run timestamps).
+does not drop buildings from Q. Wind grade 4 defaults to major. It is upgraded to
+destroyed only under the frozen rule: (2) roof_structure_damage_ and
+wall_structure_damage_ are both recorded as 100 (total failure); values below 100
+are never upgraded. Rule (1) requires the record to state that the whole building
+collapsed or no longer exists; partial or local collapse does not qualify.
+A separate P7 conservative-mapping sensitivity does not replace main counts.
+F is coded only from existing component fields (missing = unobserved), never from
+the ordinal grade. summary.json is written entirely by this script and is
+deterministic (no run timestamps).
 """
 from __future__ import annotations
 
@@ -88,7 +94,7 @@ COLLAPSE_RELATED_FIELDS = [
     "surge_damage_rating",
 ]
 # Keyword scan over all source columns for collapse / no-longer-present language.
-# Hits are recorded as values; nothing is mapped to destroyed from a hit.
+# Hits are recorded as values. A keyword hit is not by itself a rule-(1) upgrade.
 COLLAPSE_KEYWORD_RE = (
     r"total\s*collapse|partial\s*collapse|\bcollapse(?:d|s)?\b|"
     r"destroyed|total\s*loss|complete\s*loss|"
@@ -99,6 +105,44 @@ COLLAPSE_KEYWORD_RE = (
 )
 
 WIND_MAP_02 = {"0": "undamaged", "1": "minor", "2": "moderate"}
+
+# Frozen wind-grade-4 destroyed rule (Algorithm Researcher, 2026-11-17).
+# Default is major. Upgrade under rule (2) only when both structure fields are
+# recorded as 100 (total failure). Anything below 100 is not upgraded. No other
+# numeric threshold is used. Table 4 shaded cells are not used to upgrade.
+GRADE4_DESTROYED_STRUCTURE_VALUE = 100
+
+# Rule (1): the record must state that the whole building collapsed or that the
+# building no longer exists. Partial / local collapse does not qualify. The
+# following overall_damage_notes were reviewed and do not satisfy rule (1).
+RULE1_PARTIAL_NOTES_NOT_QUALIFYING = {
+    "Total collapse of roof and front of store": (
+        "partial_local_collapse_of_roof_and_front_of_store_not_whole_building"
+    ),
+}
+
+# F definition quoted from docs/eval_protocol.md (origin/main, merged protocol).
+F_DEFINITION_QUOTE = (
+    'Exact definition of "facade damage" in the reference: structural wall '
+    "damage visible in the ground image — through-cracks; partial or full wall "
+    "missing/collapsed; wall fire charring; OR flood waterline reaching "
+    "first-floor interior height. Broken windows alone or surrounding debris "
+    "alone do NOT count. F is coded from component fields, never from the "
+    "ordinal grade."
+)
+F_STEER_QUOTE = (
+    "StEER wind is frozen as follows. Code F from component fields, never from "
+    "the grade."
+)
+F_SURGE_QUOTE = "Surge 3 is not F."
+F_OPERATIONALIZATION = (
+    "For StEER Michael, F is coded only from the existing component field "
+    "wall_structure_damage_. F=1 if the field is non-missing and > 0; F=0 if "
+    "the field is non-missing and = 0; missing = unobserved. Fenestration, "
+    "roof-structure, roof/wall substrate, ordinal wind grade, and surge grade "
+    "are not used to code F. Interior waterline and charring fields are absent "
+    "from the source table (unobserved) and cannot set F=1."
+)
 
 
 def _num(v):
@@ -126,6 +170,123 @@ def _structure(row):
         "wall_structure_gt0": wall_gt0,
         "roof_or_wall_structure_gt0": roof_gt0 or wall_gt0,
         "both_structure_fields_blank": (not roof_filled) and (not wall_filled),
+        "roof_structure_eq_100": roof is not None and roof == GRADE4_DESTROYED_STRUCTURE_VALUE,
+        "wall_structure_eq_100": wall is not None and wall == GRADE4_DESTROYED_STRUCTURE_VALUE,
+    }
+
+
+def _field_raw(row, key):
+    return "" if row.get(key) is None else str(row.get(key))
+
+
+def decide_grade4(row):
+    """Frozen destroyed rule for a wind-grade-4 record. Default is major.
+
+    Rule (2): upgrade only if roof_structure_damage_ == 100 AND
+    wall_structure_damage_ == 100 (both recorded as total failure).
+    Values below 100 are never upgraded. No other numeric threshold is used.
+
+    Rule (1): upgrade only if the record states that the whole building
+    collapsed or no longer exists. Partial / local collapse, including
+    "Total collapse of roof and front of store", does not qualify. This
+    function does not auto-upgrade from keyword hits.
+    """
+    st = _structure(row)
+    note = (row.get("overall_damage_notes") or "").strip()
+    rule1_partial = RULE1_PARTIAL_NOTES_NOT_QUALIFYING.get(note)
+    rule2 = bool(st["roof_structure_eq_100"] and st["wall_structure_eq_100"])
+    fields_used = {
+        "roof_structure_damage_": _field_raw(row, "roof_structure_damage_"),
+        "wall_structure_damage_": _field_raw(row, "wall_structure_damage_"),
+        "overall_damage_notes": _field_raw(row, "overall_damage_notes"),
+        "status": _field_raw(row, "status"),
+        "_piles_missing_or_collapsed": _field_raw(row, "_piles_missing_or_collapsed"),
+        "_piles_leaning_or_broken": _field_raw(row, "_piles_leaning_or_broken"),
+    }
+    if rule2:
+        return {
+            "mapped": "destroyed",
+            "reason": "grade_4_rule_2_roof_and_wall_structure_recorded_as_100",
+            "rule_triggered": "rule_2_roof_and_wall_structure_recorded_as_100",
+            "destroyed_assigned": True,
+            "wind4_not_upgraded_reason": "",
+            "fields_used": fields_used,
+            **st,
+        }
+    if rule1_partial:
+        not_upgraded = (
+            "wind4_not_upgraded: note is partial/local collapse and does not "
+            "satisfy rule (1) (whole-building collapse or building no longer "
+            f"exists); {rule1_partial}; rule (2) not met because "
+            "roof_structure_damage_ and wall_structure_damage_ are not both "
+            "recorded as 100"
+        )
+    else:
+        not_upgraded = (
+            "wind4_not_upgraded: default major; rule (1) not triggered "
+            "(record does not state whole-building collapse or that the "
+            "building no longer exists); rule (2) not met because "
+            "roof_structure_damage_ and wall_structure_damage_ are not both "
+            "recorded as 100"
+        )
+    return {
+        "mapped": "major",
+        "reason": "grade_4_default_major_not_upgraded",
+        "rule_triggered": "none",
+        "destroyed_assigned": False,
+        "wind4_not_upgraded_reason": not_upgraded,
+        "fields_used": fields_used,
+        **st,
+    }
+
+
+def wall_structure_F(row):
+    """Code F from wall_structure_damage_ only. Missing = unobserved."""
+    raw = _field_raw(row, "wall_structure_damage_").strip()
+    if raw == "":
+        return {
+            "wall_structure_raw": "",
+            "wall_structure_status": "missing",
+            "F": "unobserved",
+        }
+    val = _num(raw)
+    if val > 0:
+        status, F = "gt0", 1
+    else:
+        status, F = "eq0", 0
+    return {
+        "wall_structure_raw": raw,
+        "wall_structure_status": status,
+        "wall_structure_value": val,
+        "F": F,
+    }
+
+
+def building_F(b):
+    """Building-level F. Multi-point F disagreements are not forced to 0 or 1."""
+    per_point = []
+    for p in b["points"]:
+        code = wall_structure_F(p["row"])
+        per_point.append({
+            "fulcrum_id": p["fulcrum_id"],
+            "wind_damage_rating": p["row"].get("wind_damage_rating", ""),
+            **code,
+        })
+    Fs = [c["F"] for c in per_point]
+    statuses = [c["wall_structure_status"] for c in per_point]
+    if len(set(Fs)) == 1:
+        F = Fs[0]
+        consistent = True
+        wall_status = statuses[0]
+    else:
+        F = "inconsistent"
+        consistent = False
+        wall_status = "inconsistent"
+    return {
+        "F": F,
+        "F_consistent": consistent,
+        "wall_structure_status": wall_status,
+        "per_point": per_point,
     }
 
 
@@ -220,29 +381,28 @@ def collapse_to_buildings(recs):
 
 def land_wind_grade(b):
     """Land wind 3/4 from existing component fields. Does not drop the building from Q.
-    Grade 4 is recorded as major when it has a resolved grade and structure damage;
-    destroyed is never assigned and no threshold is applied.
+
+    Wind grade 4 defaults to major. Upgrade to destroyed only under the frozen
+    rule in decide_grade4. Buildings not in wind Y receive no official label.
     """
+    empty = {"rule_triggered": "none", "wind4_not_upgraded_reason": "", "destroyed_assigned": False}
     if not b["wind_in_Y"]:
         reason = ("dropped_from_wind_Y_multi_point_disagree"
                   if not b["wind_agree"] else "excluded_wind_grade_-1")
-        return {"mapped": None, "reason": reason, "destroyed_assigned": False}
+        return {"mapped": None, "reason": reason, **empty}
     g = b["wind_grade"]
     if g in WIND_MAP_02:
-        return {"mapped": WIND_MAP_02[g], "reason": f"wind_grade_{g}_unchanged", "destroyed_assigned": False}
+        return {"mapped": WIND_MAP_02[g], "reason": f"wind_grade_{g}_unchanged", **empty}
     st = _structure(b["primary"]["row"])
     if g == "3":
         if st["roof_or_wall_structure_gt0"]:
             return {"mapped": "major", "reason": "grade_3_roof_or_wall_structure_gt0",
-                    "destroyed_assigned": False, **st}
+                    **empty, **st}
         return {"mapped": "unknown", "reason": "grade_3_no_structure_damage_gt0",
-                "destroyed_assigned": False, **st}
+                **empty, **st}
     if g == "4":
-        mapped = "major" if st["roof_or_wall_structure_gt0"] else "unknown"
-        reason = ("grade_4_recorded_as_major_destroyed_not_assigned"
-                  if mapped == "major" else "grade_4_no_structure_damage_gt0_destroyed_not_assigned")
-        return {"mapped": mapped, "reason": reason, "destroyed_assigned": False, **st}
-    return {"mapped": None, "reason": f"unexpected_wind_grade_{g}", "destroyed_assigned": False}
+        return decide_grade4(b["primary"]["row"])
+    return {"mapped": None, "reason": f"unexpected_wind_grade_{g}", **empty}
 
 
 _COLLAPSE_RE = re.compile(COLLAPSE_KEYWORD_RE, re.I)
@@ -516,6 +676,7 @@ def main():
     Q_buildings = collapse_to_buildings(Q)
     for b in Q_buildings:
         b["wind_mapped"] = land_wind_grade(b)
+        b["F_info"] = building_F(b)
 
     # Official Q includes the just-outside-tile unique match, flagged, not dropped.
     edge_buildings = [b for b in Q_buildings if b["edge_outside_tile_poly"]]
@@ -695,6 +856,198 @@ def main():
                 "hits": hits,
             })
 
+    # Official upgrade decisions for the 17 grade-4 candidates, using the
+    # grade-4 point. Buildings not in wind Y keep no official assigned label.
+    upgrade_rows = []
+    for b, pt in g4_candidates:
+        decision = decide_grade4(pt["row"])
+        if b["wind_in_Y"]:
+            assigned = b["wind_mapped"]["mapped"]
+            rule = b["wind_mapped"].get("rule_triggered") or "none"
+            not_upgraded = b["wind_mapped"].get("wind4_not_upgraded_reason") or ""
+            destroyed_assigned = bool(b["wind_mapped"].get("destroyed_assigned"))
+        else:
+            assigned = "excluded_inconsistent" if not b["wind_agree"] else "excluded_wind_grade_-1"
+            rule = "none"
+            not_upgraded = ""
+            destroyed_assigned = False
+        fu = decision["fields_used"]
+        upgrade_rows.append({
+            "fulcrum_id": pt["fulcrum_id"],
+            "footprint_uid": b["footprint_uid"],
+            "wind_in_Y": b["wind_in_Y"],
+            "assigned_label": assigned,
+            "rule_triggered": rule,
+            "destroyed_assigned": destroyed_assigned,
+            "wind4_not_upgraded_reason": not_upgraded,
+            "roof_structure_damage_": fu["roof_structure_damage_"],
+            "wall_structure_damage_": fu["wall_structure_damage_"],
+            "overall_damage_notes": fu["overall_damage_notes"],
+            "status": fu["status"],
+            "_piles_missing_or_collapsed": fu["_piles_missing_or_collapsed"],
+            "_piles_leaning_or_broken": fu["_piles_leaning_or_broken"],
+            "grade4_point_rule_label": decision["mapped"],
+            "grade4_point_rule_triggered": decision["rule_triggered"],
+        })
+
+    g4_destroyed_in_Y = [b for b in g4_in_Y if b["wind_mapped"]["mapped"] == "destroyed"]
+    g4_major_in_Y = [b for b in g4_in_Y if b["wind_mapped"]["mapped"] == "major"]
+    g4_unknown_in_Y = [b for b in g4_in_Y if b["wind_mapped"]["mapped"] == "unknown"]
+    wind4_not_upgraded = [r for r in upgrade_rows if r["wind_in_Y"] and r["assigned_label"] == "major"]
+
+    # P7 conservative-mapping sensitivity only: not a replacement for main counts.
+    # Buildings kept major in the frozen mapping but whose collapse-language note
+    # conflicts with structural fields are recorded as destroyed here.
+    p7_rows = []
+    for r in upgrade_rows:
+        if not r["wind_in_Y"]:
+            continue
+        note = (r["overall_damage_notes"] or "").strip()
+        hits = [h for h in g4_keyword_hits if h["fulcrum_id"] == r["fulcrum_id"]]
+        if r["assigned_label"] == "major" and (note in RULE1_PARTIAL_NOTES_NOT_QUALIFYING or hits):
+            p7_rows.append({
+                **r,
+                "sensitivity_assigned_label": "destroyed",
+                "flag": "note_vs_structural_fields_conflict",
+                "note": (
+                    "Conservative-mapping sensitivity only; does not replace main "
+                    "counts. The note describes collapse but structural fields do "
+                    "not meet rule (2) (both recorded as 100). In the frozen "
+                    "mapping this building stays major / wind4_not_upgraded."
+                ),
+            })
+
+    def building_label_counts(buildings):
+        labels = Counter()
+        n_inconsistent = 0
+        n_minus1 = 0
+        for b in buildings:
+            if not b["wind_in_Y"]:
+                if not b["wind_agree"]:
+                    n_inconsistent += 1
+                else:
+                    n_minus1 += 1
+                continue
+            labels[b["wind_mapped"]["mapped"]] += 1
+        return {
+            "unit": "unique footprints / buildings",
+            "Q": len(buildings),
+            "no_damage": int(labels.get("undamaged", 0)),
+            "minor": int(labels.get("minor", 0)),
+            "moderate": int(labels.get("moderate", 0)),
+            "major": int(labels.get("major", 0)),
+            "destroyed": int(labels.get("destroyed", 0)),
+            "unknown": int(labels.get("unknown", 0)),
+            "excluded_inconsistent": n_inconsistent,
+            "excluded_wind_grade_-1": n_minus1,
+            "wind_Y_n": sum(labels.values()),
+            "note": (
+                "no_damage is the landed label for wind grade 0 (undamaged). "
+                "moderate is wind grade 2 unchanged under WIND_MAP_02 and is "
+                "reported separately rather than folded into major. "
+                "excluded_inconsistent are multi-point footprints dropped from "
+                "wind Y because the points disagree on wind grade; they stay in Q."
+            ),
+        }
+
+    wind_label_counts = building_label_counts(Q_buildings)
+
+    # F observability at building level on Q.
+    wall_status_counts = Counter(b["F_info"]["wall_structure_status"] for b in Q_buildings)
+    F_value_counts = Counter(b["F_info"]["F"] for b in Q_buildings)
+    n_wall_nonmissing = sum(
+        1 for b in Q_buildings if b["F_info"]["wall_structure_status"] in ("eq0", "gt0")
+    )
+    n_F1 = sum(1 for b in Q_buildings if b["F_info"]["F"] == 1)
+    n_F0 = sum(1 for b in Q_buildings if b["F_info"]["F"] == 0)
+    n_F_unobs = sum(1 for b in Q_buildings if b["F_info"]["F"] == "unobserved")
+    n_F_inconsistent = sum(1 for b in Q_buildings if b["F_info"]["F"] == "inconsistent")
+
+    F1_by_grade = {g: 0 for g in ["0", "1", "2", "3", "4"]}
+    F1_inconsistent = []
+    for b in Q_buildings:
+        if b["F_info"]["F"] != 1:
+            continue
+        if not b["wind_agree"]:
+            F1_inconsistent.append({
+                "footprint_uid": b["footprint_uid"],
+                "fulcrum_ids": b["fulcrum_ids"],
+                "wind_grades": b["wind_grades"],
+                "wall_structure_per_point": [
+                    {
+                        "fulcrum_id": pt["fulcrum_id"],
+                        "wind_damage_rating": pt["wind_damage_rating"],
+                        "wall_structure_damage_": pt["wall_structure_raw"],
+                        "F": pt["F"],
+                    }
+                    for pt in b["F_info"]["per_point"]
+                ],
+            })
+            continue
+        g = b["wind_grade"] if b["wind_grade"] is not None else ""
+        if g in F1_by_grade:
+            F1_by_grade[g] += 1
+        else:
+            F1_inconsistent.append({
+                "footprint_uid": b["footprint_uid"],
+                "fulcrum_ids": b["fulcrum_ids"],
+                "wind_grades": b["wind_grades"],
+                "note": f"F=1 but unexpected wind_grade={g!r}",
+            })
+
+    F_observability = {
+        "unit": "unique footprints / buildings",
+        "Q": len(Q_buildings),
+        "definition_source": "docs/eval_protocol.md (origin/main)",
+        "definition_quoted": [
+            F_DEFINITION_QUOTE,
+            F_STEER_QUOTE,
+            F_SURGE_QUOTE,
+        ],
+        "operationalization": F_OPERATIONALIZATION,
+        "n_wall_structure_damage_non_missing": n_wall_nonmissing,
+        "n_F_eq_1": n_F1,
+        "n_F_eq_0": n_F0,
+        "n_F_unobserved": n_F_unobs,
+        "n_F_inconsistent_multi_point": n_F_inconsistent,
+        "wall_structure_damage_distribution_in_Q": {
+            "eq0": int(wall_status_counts.get("eq0", 0)),
+            "gt0": int(wall_status_counts.get("gt0", 0)),
+            "missing": int(wall_status_counts.get("missing", 0)),
+            "inconsistent_multi_point": int(wall_status_counts.get("inconsistent", 0)),
+        },
+        "F_value_counts": {
+            "0": n_F0,
+            "1": n_F1,
+            "unobserved": n_F_unobs,
+            "inconsistent_multi_point": n_F_inconsistent,
+        },
+        "F_eq_1_by_wind_grade": {
+            "0": F1_by_grade["0"],
+            "1": F1_by_grade["1"],
+            "2": F1_by_grade["2"],
+            "3": F1_by_grade["3"],
+            "4": F1_by_grade["4"],
+            "inconsistent_multi_point": len(F1_inconsistent),
+            "inconsistent_multi_point_footprints": F1_inconsistent,
+            "note": (
+                "Counts are buildings with F=1. Wind grades 0-4 are buildings "
+                "whose points agree on wind grade. Inconsistent multi-point "
+                "footprints are listed separately and are not assigned a single "
+                "wind grade."
+            ),
+        },
+        "F_inconsistent_multi_point_footprints": [
+            {
+                "footprint_uid": b["footprint_uid"],
+                "fulcrum_ids": b["fulcrum_ids"],
+                "wind_grades": b["wind_grades"],
+                "per_point": b["F_info"]["per_point"],
+            }
+            for b in Q_buildings if b["F_info"]["F"] == "inconsistent"
+        ],
+    }
+
     landing = {
         "grade_3": {
             "n_buildings_in_wind_Y": w_bldg["by_grade"]["3"],
@@ -708,11 +1061,57 @@ def main():
             "n_buildings_with_a_grade4_point": len(g4_candidates),
             "n_in_wind_Y": len(g4_in_Y),
             "n_multi_point_wind_disagree_still_in_Q": sum(1 for b, _ in g4_candidates if not b["wind_agree"]),
-            "major_in_wind_Y": sum(1 for b in g4_in_Y if b["wind_mapped"]["mapped"] == "major"),
-            "unknown_in_wind_Y": sum(1 for b in g4_in_Y if b["wind_mapped"]["mapped"] == "unknown"),
-            "destroyed": 0,
-            "destroyed_assigned": False,
-            "rule": "Grade 4 is not mapped to destroyed. Buildings in wind Y with structure damage are recorded as major for reporting only. A component threshold for upgrading any of them to destroyed is not proposed here and stays empty pending Jlin approval of text drafted from Prevatt & Roueche 2020 Tables 4-5. The candidate CSV lists all 17 buildings that have a grade-4 point, with existing component fields, so a threshold can be applied later.",
+            "major_in_wind_Y": len(g4_major_in_Y),
+            "unknown_in_wind_Y": len(g4_unknown_in_Y),
+            "destroyed_in_wind_Y": len(g4_destroyed_in_Y),
+            "destroyed": len(g4_destroyed_in_Y),
+            "rule": (
+                "Wind grade 4 defaults to major. Upgrade to destroyed under "
+                "rule (2) only if roof_structure_damage_ == 100 AND "
+                "wall_structure_damage_ == 100 (recorded total failure). "
+                "Values below 100 are never upgraded. Rule (1) requires the "
+                "record to state that the whole building collapsed or no "
+                "longer exists; partial or local collapse, including "
+                "'Total collapse of roof and front of store', does not "
+                "qualify. Keyword hits are not used as an automatic upgrade."
+            ),
+            "upgraded": [
+                {
+                    "fulcrum_id": b["primary"]["fulcrum_id"] if b["wind_agree"] else
+                    sorted([p["fulcrum_id"] for p in b["points"] if p["row"]["wind_damage_rating"] == "4"])[0],
+                    "footprint_uid": b["footprint_uid"],
+                    "rule_triggered": b["wind_mapped"].get("rule_triggered"),
+                    "reason": b["wind_mapped"].get("reason"),
+                    "fields_used": b["wind_mapped"].get("fields_used"),
+                }
+                for b in g4_destroyed_in_Y
+            ],
+            "wind4_not_upgraded_n": len(wind4_not_upgraded),
+            "upgrade_list_csv": "wind_grade4_upgrade_list.csv",
+            "not_upgraded_csv": "wind_grade4_not_upgraded.csv",
+        },
+    }
+
+    p7_sensitivity = {
+        "replaces_main_counts": False,
+        "note": (
+            "P7 conservative-mapping sensitivity only. It does not replace "
+            "main wind-label counts. Buildings listed here stay major in the "
+            "frozen mapping and are recorded as destroyed only in this "
+            "sensitivity, flagged note_vs_structural_fields_conflict."
+        ),
+        "n_buildings": len(p7_rows),
+        "csv": "P7_conservative_mapping_sensitivity.csv",
+        "buildings": p7_rows,
+        "grade_4_in_wind_Y_if_applied": {
+            "destroyed": len(g4_destroyed_in_Y) + len(p7_rows),
+            "major": len(g4_major_in_Y) - len(p7_rows),
+            "unknown": len(g4_unknown_in_Y),
+        },
+        "main_grade_4_in_wind_Y": {
+            "destroyed": len(g4_destroyed_in_Y),
+            "major": len(g4_major_in_Y),
+            "unknown": len(g4_unknown_in_Y),
         },
     }
 
@@ -751,13 +1150,16 @@ def main():
             "grade_3": building_component_coverage(Q_buildings, "3"),
             "grade_4_in_wind_Y": building_component_coverage(Q_buildings, "4"),
         },
+        "wind_label_counts_building_level": wind_label_counts,
+        "F_observability": F_observability,
+        "P7_conservative_mapping_sensitivity": p7_sensitivity,
         "wind_3_4_landing": landing,
         "count_unit_note": unit_mismatch,
         "wind_grade4_destroyed_candidates": {
             "n_buildings_with_a_grade4_point": len(g4_candidates),
             "n_in_wind_Y": len(g4_in_Y),
             "n_multi_point_wind_disagree_still_in_Q": sum(1 for b, _ in g4_candidates if not b["wind_agree"]),
-            "destroyed_assigned": 0,
+            "destroyed_assigned": len(g4_destroyed_in_Y),
             "percentage_threshold_proposed": False,
             "source_column_count": len(src_cols_all),
             "exact_field_names_in_csv": (
@@ -767,7 +1169,8 @@ def main():
             "collapse_keyword_hits": g4_keyword_hits,
             "distinct_values_across_17": _distinct_values(g4_rows_for_distinct, distinct_keys_u),
             "csv": "wind_grade4_destroyed_candidates.csv",
-            "note": "Per-building values are in the CSV. Distinct values below are over the 17 grade-4 points (one per footprint). No building is mapped to destroyed.",
+            "upgrade_list_csv": "wind_grade4_upgrade_list.csv",
+            "note": "Per-building values are in the CSV. Distinct values below are over the 17 grade-4 points (one per footprint). Official destroyed assignments follow the frozen rule and are listed in wind_grade4_upgrade_list.csv.",
         },
     }
 
@@ -828,7 +1231,7 @@ def main():
         "gate4_on_Q_point_level_diagnostic": gate4_points(Q),
         "gate4_on_main_sample_sensitivity_no_px_filter_point_level": gate4_points(main_sample),
         "not_computed": ["conflict labels U", "any estimate from official xBD damage subtypes", "training",
-                         "destroyed mapping for wind grade 4", "percentage threshold for destroyed"],
+                         "percentage threshold for destroyed (rule 2 uses recorded total failure = 100, not a proposed percentage cut)"],
         "output_determinism": {
             "summary_json_excludes_run_timestamps": True,
             "non_deterministic_fields": "none in summary.json; started/finished are written only to run.log",
@@ -882,7 +1285,8 @@ def main():
         "edge_outside_tile_poly", "edge_fulcrum_id", "edge_distance_m",
         "wind_grades", "surge_grades", "wind_agree", "surge_agree",
         "wind_grade", "surge_grade", "wind_in_Y", "surge_in_Y",
-        "wind_mapped", "wind_mapped_reason", "destroyed_assigned", "flags",
+        "wind_mapped", "wind_mapped_reason", "destroyed_assigned", "rule_triggered",
+        "F", "wall_structure_status", "flags",
     ]
     with (OUT / "Q_buildings.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f); w.writerow(q_bldg_fields)
@@ -897,6 +1301,8 @@ def main():
                 b["surge_grade"] if b["surge_grade"] is not None else "",
                 b["wind_in_Y"], b["surge_in_Y"],
                 wm.get("mapped") or "", wm.get("reason") or "", wm.get("destroyed_assigned", False),
+                wm.get("rule_triggered") or "",
+                b["F_info"]["F"], b["F_info"]["wall_structure_status"],
                 ";".join(b["flags"]),
             ])
 
@@ -921,12 +1327,12 @@ def main():
             ] + [row.get(c, "") for c in ROOF_WALL_DAMAGE_FIELDS] + [row.get(c, "") for c in COMPONENT_FIELDS])
 
     # Grade-4 destroyed candidates: all 17 buildings with a grade-4 point.
-    # Exact source field names; per-building values; destroyed is not assigned.
+    # Exact source field names; per-building values; official assignment follows the frozen rule.
     g4_meta = [
         "footprint_uid", "fulcrum_id_grade4", "other_fulcrum_ids_same_footprint",
         "n_points_on_footprint", "wind_grades_on_footprint", "wind_agree", "wind_in_Y",
         "tile", "split", "distance_m", "assessment_type", "building_type",
-        "destroyed_assigned", "keyword_hits",
+        "assigned_label", "rule_triggered", "destroyed_assigned", "keyword_hits",
     ]
     g4_src_fields = []
     for c in (["wind_damage_rating", "surge_damage_rating"] + ROOF_WALL_DAMAGE_FIELDS
@@ -940,7 +1346,9 @@ def main():
     g4_csv_fields = g4_meta + g4_src_fields + residual
     with (OUT / "wind_grade4_destroyed_candidates.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f); w.writerow(g4_csv_fields)
-        for b, pt in g4_candidates:
+        for b, pt, ur in zip(
+            [t[0] for t in g4_candidates], [t[1] for t in g4_candidates], upgrade_rows
+        ):
             row = pt["row"]
             hits = keyword_hits(row, src_cols_all)
             hit_s = " | ".join(f"{h['field']}={h['value']}" for h in hits)
@@ -950,8 +1358,53 @@ def main():
                 b["n_points"], ";".join(b["wind_grades"]), b["wind_agree"], b["wind_in_Y"],
                 b["tile"], b["split"], pt.get("distance_m", ""),
                 row.get("assessment_type", ""), row.get("building_type", ""),
-                False, hit_s,
+                ur["assigned_label"], ur["rule_triggered"], ur["destroyed_assigned"], hit_s,
             ] + [row.get(c, "") for c in g4_src_fields] + [row.get(c, "") for c in residual])
+
+    upgrade_fields = [
+        "fulcrum_id", "footprint_uid", "wind_in_Y", "assigned_label", "rule_triggered",
+        "roof_structure_damage_", "wall_structure_damage_", "overall_damage_notes",
+        "status", "_piles_missing_or_collapsed", "_piles_leaning_or_broken",
+        "destroyed_assigned", "wind4_not_upgraded_reason",
+        "grade4_point_rule_label", "grade4_point_rule_triggered",
+    ]
+    with (OUT / "wind_grade4_upgrade_list.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=upgrade_fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(upgrade_rows)
+
+    not_up_fields = [
+        "fulcrum_id", "footprint_uid", "wind_in_Y", "assigned_label", "rule_triggered",
+        "wind4_not_upgraded_reason",
+        "roof_structure_damage_", "wall_structure_damage_", "overall_damage_notes",
+        "status", "_piles_missing_or_collapsed", "_piles_leaning_or_broken",
+    ]
+    with (OUT / "wind_grade4_not_upgraded.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=not_up_fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(wind4_not_upgraded)
+
+    p7_fields = [
+        "fulcrum_id", "footprint_uid", "wind_in_Y", "assigned_label",
+        "sensitivity_assigned_label", "flag", "rule_triggered",
+        "roof_structure_damage_", "wall_structure_damage_", "overall_damage_notes",
+        "status", "_piles_missing_or_collapsed", "_piles_leaning_or_broken", "note",
+    ]
+    with (OUT / "P7_conservative_mapping_sensitivity.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=p7_fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(p7_rows)
+    p7_json = {
+        "replaces_main_counts": False,
+        "definition": p7_sensitivity["note"],
+        "n_buildings": len(p7_rows),
+        "buildings": p7_rows,
+        "grade_4_in_wind_Y_if_applied": p7_sensitivity["grade_4_in_wind_Y_if_applied"],
+        "main_grade_4_in_wind_Y": p7_sensitivity["main_grade_4_in_wind_Y"],
+    }
+    (OUT / "P7_conservative_mapping_sensitivity.json").write_text(
+        json.dumps(_jsonable(p7_json), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     # README and changelog generated from the same structures (no hand-edited numbers).
     edge = Q_building_level["edge_outside_tile_poly"]
@@ -977,7 +1430,7 @@ Matching rule unchanged (frozen 10 m / IoU>0.5, no offset).
 - Wind / surge / component / 3-4 landing / gate 4 official counts are at the {len(Q_buildings)}-building level.
 - Point-level counts remain only as diagnostics, and to document the old 16/14 vs 18/17 mismatch.
 - summary.json no longer contains run timestamps, so a clean rerun of this script is byte-identical.
-- New files: Q_buildings.csv, wind_grade3_unknown.csv, wind_grade4_destroyed_candidates.csv.
+- New files: Q_buildings.csv, wind_grade3_unknown.csv, wind_grade4_destroyed_candidates.csv, wind_grade4_upgrade_list.csv, wind_grade4_not_upgraded.csv, P7_conservative_mapping_sensitivity.csv, P7_conservative_mapping_sensitivity.json.
 
 ## Gate summary
 - Gate 1 PASS (conditional): on-site/drive-by human D2D survey, per-building lat/lon, grade fields.
@@ -988,15 +1441,17 @@ Matching rule unchanged (frozen 10 m / IoU>0.5, no offset).
 ## Flagged just-outside-tile point
 {edge_line}
 
-## Wind 3/4 landing (reporting only; buildings stay in Q; destroyed not assigned)
+## Wind 3/4 landing (buildings stay in Q)
 - Grade 3 in wind Y: {landing['grade_3']['n_buildings_in_wind_Y']} buildings; {landing['grade_3']['major']} -> major (roof or wall structure damage >0); {landing['grade_3']['unknown']} -> unknown (listed in wind_grade3_unknown.csv).
-- Grade 4: {landing['grade_4']['n_buildings_with_a_grade4_point']} buildings in Q have a grade-4 point ({landing['grade_4']['n_in_wind_Y']} in wind Y, {landing['grade_4']['n_multi_point_wind_disagree_still_in_Q']} also have a disagreeing other-grade point). In wind Y, {landing['grade_4']['major_in_wind_Y']} recorded as major for reporting only; {landing['grade_4']['unknown_in_wind_Y']} without structure damage >0 marked unknown. destroyed=0. No percentage threshold is proposed. All 17 are in wind_grade4_destroyed_candidates.csv with existing component fields.
+- Grade 4: {landing['grade_4']['n_buildings_with_a_grade4_point']} buildings in Q have a grade-4 point ({landing['grade_4']['n_in_wind_Y']} in wind Y, {landing['grade_4']['n_multi_point_wind_disagree_still_in_Q']} also have a disagreeing other-grade point). In wind Y, {landing['grade_4']['destroyed_in_wind_Y']} upgraded to destroyed under rule (2) (roof and wall structure both recorded as 100); {landing['grade_4']['major_in_wind_Y']} remain major (wind4_not_upgraded); {landing['grade_4']['unknown_in_wind_Y']} unknown. The 17-building upgrade list is wind_grade4_upgrade_list.csv. P7 conservative-mapping sensitivity is a separate output and does not replace these main counts.
+- Building-level wind labels in Q: no_damage={wind_label_counts['no_damage']}, minor={wind_label_counts['minor']}, moderate={wind_label_counts['moderate']}, major={wind_label_counts['major']}, destroyed={wind_label_counts['destroyed']}, unknown={wind_label_counts['unknown']}, excluded_inconsistent={wind_label_counts['excluded_inconsistent']}.
+- F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; wall distribution eq0/gt0/missing/inconsistent={F_observability['wall_structure_damage_distribution_in_Q']}. F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} inconsistent multi-point footprints.
 
 ## Old 16/14 vs 18/17 mismatch
 {unit_mismatch['explanation']}
 
 ## Files
-summary.json, points_gate_status.csv, multi_point_footprints.csv, temporal_mismatch.csv, Q_buildings.csv, wind_grade3_unknown.csv, wind_grade4_destroyed_candidates.csv, run.log, CHANGES.md, text/.
+summary.json, points_gate_status.csv, multi_point_footprints.csv, temporal_mismatch.csv, Q_buildings.csv, wind_grade3_unknown.csv, wind_grade4_destroyed_candidates.csv, wind_grade4_upgrade_list.csv, wind_grade4_not_upgraded.csv, P7_conservative_mapping_sensitivity.csv, P7_conservative_mapping_sensitivity.json, run.log, CHANGES.md, text/.
 """
     (OUT / "README.md").write_text(readme, encoding="utf-8")
 
@@ -1009,8 +1464,8 @@ prior_run_20261117_1849_hand_appended/ before this rerun and must not be used as
 
 Official Q is now generated by the script at building level ({len(Q_buildings)} buildings,
 including the flagged just-outside-tile point {edge[0]['fulcrum_id'] if edge else 'n/a'}).
-Wind 3/4 landings and the grade-3 unknown / grade-4 candidate lists are also script-generated.
-Destroyed is not assigned. No U, no GPU, no downloads, matching rule unchanged.
+Wind 3/4 landings, the frozen grade-4 destroyed rule, the upgrade list, F observability, and the P7 conservative-mapping sensitivity are also script-generated.
+P7 does not replace main counts. No U, no GPU, no downloads, matching rule unchanged.
 """
     (OUT / "CHANGES.md").write_text(changes, encoding="utf-8")
 
@@ -1027,6 +1482,13 @@ Destroyed is not assigned. No U, no GPU, no downloads, matching rule unchanged.
         "surge_building_level": summary["Q_building_level"]["surge_building_level"],
         "surge_Y_n": summary["Q_building_level"]["surge_Y_n"],
         "wind_3_4_landing": summary["Q_building_level"]["wind_3_4_landing"],
+        "wind_label_counts_building_level": summary["Q_building_level"]["wind_label_counts_building_level"],
+        "F_observability_short": {
+            "n_wall_structure_damage_non_missing": F_observability["n_wall_structure_damage_non_missing"],
+            "n_F_eq_1": F_observability["n_F_eq_1"],
+            "wall_structure_damage_distribution_in_Q": F_observability["wall_structure_damage_distribution_in_Q"],
+            "F_eq_1_by_wind_grade": {k: F_observability["F_eq_1_by_wind_grade"][k] for k in ["0", "1", "2", "3", "4", "inconsistent_multi_point"]},
+        },
         "edge_outside_tile_poly": summary["Q_building_level"]["edge_outside_tile_poly"],
         "count_unit_note_short": {
             "point_level_grade_3": unit_mismatch["point_level_grade_3"],
