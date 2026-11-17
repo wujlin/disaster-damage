@@ -163,7 +163,7 @@ python -m mvbridge train-xbd \
 
 `--max-steps 20` stops after a few updates for a debugging pass. Logs go to stdout and `output_dir/run.log`: resolved config, device, class histogram, first image ids, first-batch shapes, per-step loss, and a checkpoint that stores the damage pathway and the head, not a second copy of the backbone. Identity parameters stay frozen (`identity_trainable=0`). The optimizer lists only the damage pathway and the damage head.
 
-Leave-one-reference-event-out training passes `--fold`. The default command above does not, and still uses the full official train split. The main seed-1 fold holds out `hurricane-michael`. `minus-hurricane-michael-seed2` is that same hold-out at seed 2. `minus-palu-tsunami` is the second reference fold. `claim_evidence: true` on Palu only means the head can be used for later scoring. Palu U is not computed yet, and Palu results are not Claim-2 evidence. `minus-santa-rosa` and `minus-socal` are pipeline checks, not Claim-2 evidence. See [docs/folds.md](docs/folds.md).
+Leave-one-reference-event-out training passes `--fold`. The default command above does not, and still uses the full official train split. The main seed-1 fold holds out `hurricane-michael`. `minus-hurricane-michael-seed2` is a stability repeat at seed 2 and does not define U. `minus-palu-tsunami` is the second reference fold. `claim_evidence: true` on Palu only means the head can be used for later scoring. Palu U is not computed yet, and Palu results are not Claim-2 evidence. `minus-santa-rosa` and `minus-socal` are pipeline checks, not Claim-2 evidence. See [docs/folds.md](docs/folds.md).
 
 ```bash
 python -m mvbridge train-xbd --fold minus-hurricane-michael

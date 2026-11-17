@@ -103,14 +103,15 @@ folds:
       A head that has seen Michael must not produce the satellite damage
       grade for Michael buildings.
 
-  # Same hold-out as minus-hurricane-michael. WSB GPU 0 runs this entry.
-  # Seed and output directory are the only differences. Not a CLI override.
+  # Stability repeat of minus-hurricane-michael. WSB GPU 0 runs this entry.
+  # Same hold-out, paths, and training pin. Seed, output directory, role, and
+  # claim_evidence differ. It does not define U. Not a CLI override.
   - name: minus-hurricane-michael-seed2
     holdout_events:
       - hurricane-michael
-    role: main
+    role: seed-repeat
     enabled: true
-    claim_evidence: true
+    claim_evidence: false
     seed: 2
     manifest_sha256: null
     checkpoint_sha256: null
@@ -129,9 +130,11 @@ folds:
       weights_bytes: 346385151
       pretrained: false
     notes: >
-      Repeat of the Michael hold-out at seed 2. Runs on WSB GPU 0.
+      Stability repeat of the Michael hold-out at seed 2. Runs on WSB GPU 0.
       Same event, paths, batch size, AMP dtype, torch pin, and weight sha256
-      as minus-hurricane-michael. Checkpoints go to a separate output directory.
+      as minus-hurricane-michael. claim_evidence is false, so it does not
+      define U. Train and score it by name with --fold. Checkpoints go to a
+      separate output directory.
 
   - name: minus-palu-tsunami
     holdout_events:

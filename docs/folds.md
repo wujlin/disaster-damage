@@ -4,7 +4,7 @@ The satellite damage head is DINOv2 ViT-B/14, seed 1. A fold holds one reference
 
 For one fold head, every image of the held-out event is removed from official train, test, and hold. The count of that disaster name in each of those splits is asserted to be 0. Those images are a separate eval set (`fold-eval`). They are not train, val, or that head's in-fold test/hold. This repo calls the hold split `holdout`. Point `data.split_dirs.holdout` at `hold` when the release uses that directory name.
 
-`minus-hurricane-michael` is the main seed-1 fold. It runs on WSB GPU 1. `minus-hurricane-michael-seed2` is the same hold-out at seed 2 and runs on WSB GPU 0. The seed is a config entry, not a CLI override. Its checkpoints go to `/data/repo/outputs/minus-hurricane-michael-seed2`. Both entries hold out `hurricane-michael`, so automatic routing refuses to average them. Train and score one of them by name with `--fold`.
+`minus-hurricane-michael` is the main seed-1 fold. It runs on WSB GPU 1. `minus-hurricane-michael-seed2` is a stability repeat of that hold-out at seed 2 and runs on WSB GPU 0. The seed is a config entry, not a CLI override. Its role is `seed-repeat` and `claim_evidence` is false, so it does not define \(U\). Checkpoints go to `/data/repo/outputs/minus-hurricane-michael-seed2`. Default routing sends a Michael building only to the seed-1 head. Train and score the seed-2 repeat by name with `--fold minus-hurricane-michael-seed2`. Heads are not averaged.
 
 `minus-palu-tsunami` is the second reference fold and is enabled. `claim_evidence: true` on the Palu fold only means this head is usable for later scoring. Palu's mapping is not frozen and its four diagnostic gates have not passed, so Palu U must not be computed yet and Palu results are not Claim-2 evidence.
 
@@ -69,7 +69,7 @@ Manifest sha256 is filled from the training log after a real xBD root is read. C
 | Fold | Role | Held-out `metadata.disaster` | Seed | Manifest sha256 | Checkpoint sha256 |
 | --- | --- | --- | --- | --- | --- |
 | `minus-hurricane-michael` | main | `hurricane-michael` | 1 | TBD | TBD |
-| `minus-hurricane-michael-seed2` | main (repeat) | `hurricane-michael` | 2 | TBD | TBD |
+| `minus-hurricane-michael-seed2` | seed-repeat | `hurricane-michael` | 2 | TBD | TBD |
 | `minus-palu-tsunami` | secondary | `palu-tsunami` | 1 | TBD | TBD |
 | `minus-santa-rosa` | pipeline-check | `santa-rosa-wildfire` | 1 | TBD | TBD |
 | `minus-socal` | pipeline-check | `socal-fire` | 1 | TBD | TBD |

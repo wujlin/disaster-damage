@@ -140,6 +140,9 @@ def test_shipped_folds_are_an_appendable_list():
     assert socal.holdout_events == ("socal-fire",)
     seed2 = by_name["minus-hurricane-michael-seed2"]
     assert seed2.seed == 2
+    assert seed2.role == "seed-repeat"
+    assert seed2.claim_evidence is False
+    assert seed2.enabled is True
     assert seed2.holdout_events == michael.holdout_events
     assert seed2.output_dir == "/data/repo/outputs/minus-hurricane-michael-seed2"
     assert seed2.output_dir != michael.output_dir
@@ -200,6 +203,8 @@ def test_michael_seed2_holdout_matches_seed1(tmp_path):
     seed2 = folds["minus-hurricane-michael-seed2"]
     assert seed1.seed == 1
     assert seed2.seed == 2
+    assert seed2.role == "seed-repeat"
+    assert seed2.claim_evidence is False
     assert seed2.holdout_events == seed1.holdout_events == ("hurricane-michael",)
     assert seed2.batch_size == seed1.batch_size == 32
     assert seed2.amp_dtype == seed1.amp_dtype == "bfloat16"
@@ -368,12 +373,21 @@ def test_oof_routing_never_uses_a_seen_event_head():
     michael_seed2 = by_name["minus-hurricane-michael-seed2"]
     palu = select_oof_head("palu-tsunami", folds, claim_only=True)
     assert palu.name == "minus-palu-tsunami"
+    chosen = select_oof_head("hurricane-michael", folds, claim_only=True)
+    assert chosen.name == "minus-hurricane-michael"
+    assert chosen.seed == 1
+    assert [fold.name for fold in route_oof("hurricane-michael", folds, claim_only=True)] == [
+        "minus-hurricane-michael"
+    ]
     assert [fold.name for fold in route_oof("hurricane-michael", folds, claim_only=False)] == [
         "minus-hurricane-michael",
         "minus-hurricane-michael-seed2",
     ]
     with pytest.raises(ConfigError, match="Refusing to average"):
-        select_oof_head("hurricane-michael", folds, claim_only=True)
+        select_oof_head("hurricane-michael", folds, claim_only=False)
+    assert resolve_fold({"fold": "minus-hurricane-michael-seed2", "folds_config": str(FOLDS)}).name == (
+        "minus-hurricane-michael-seed2"
+    )
     assert_head_may_score(michael, "hurricane-michael")
     assert_head_may_score(michael_seed2, "hurricane-michael")
     assert [fold.name for fold in route_oof("palu-tsunami", folds, claim_only=False)] == ["minus-palu-tsunami"]
@@ -406,8 +420,7 @@ def test_appended_fold_routes_without_a_router_change(tmp_path):
     )
     folds = load_folds(FOLDS) + (extra,)
     assert select_oof_head("hurricane-florence", folds, claim_only=True).name == "minus-hurricane-florence"
-    with pytest.raises(ConfigError, match="Refusing to average"):
-        select_oof_head("hurricane-michael", folds, claim_only=True)
+    assert select_oof_head("hurricane-michael", folds, claim_only=True).name == "minus-hurricane-michael"
     with pytest.raises(ConfigError, match="must not produce"):
         assert_head_may_score(extra, "hurricane-michael")
     text = FOLDS.read_text(encoding="utf-8") + (
@@ -443,10 +456,8 @@ def test_plan_oof_skips_events_no_head_held_out(tmp_path):
     root = tmp_path / "xbd"
     groups = _populate(root)
     tiles = [record for records in index_official_tiles(root, _data_config(root)["split_dirs"]).values() for record in records]
-    with pytest.raises(ConfigError, match="Refusing to average"):
-        plan_oof(tiles, load_folds(FOLDS), claim_only=True)
-    seed1_folds = tuple(fold for fold in load_folds(FOLDS) if fold.name != "minus-hurricane-michael-seed2")
-    groups_by_head = plan_oof(tiles, seed1_folds, claim_only=True)
+    groups_by_head = plan_oof(tiles, load_folds(FOLDS), claim_only=True)
+    assert "minus-hurricane-michael-seed2" not in groups_by_head
     michael_ids = set(groups_by_head["minus-hurricane-michael"])
     palu_ids = set(groups_by_head["minus-palu-tsunami"])
     assert michael_ids == groups["michael"]
@@ -457,7 +468,13 @@ def test_plan_oof_skips_events_no_head_held_out(tmp_path):
     assert groups["santa"].isdisjoint(assigned)
     assert groups["socal"].isdisjoint(assigned)
     assert "minus-santa-rosa" not in groups_by_head
-    with_checks = plan_oof(tiles, seed1_folds, claim_only=False)
+    with pytest.raises(ConfigError, match="Refusing to average"):
+        plan_oof(tiles, load_folds(FOLDS), claim_only=False)
+    with_checks = plan_oof(
+        tiles,
+        tuple(fold for fold in load_folds(FOLDS) if fold.claim_evidence or fold.role == "pipeline-check"),
+        claim_only=False,
+    )
     assert set(with_checks["minus-santa-rosa"]) == groups["santa"]
     assert set(with_checks["minus-socal"]) == groups["socal"]
 
@@ -488,11 +505,17 @@ def test_oof_route_cli(capsys):
     assert "seed=1" in output
     assert "averaged=false" in output
     assert "minus-hurricane-michael" not in output
-    both_seeds = main(["oof-route", "--disaster", "hurricane-michael", "--folds", str(FOLDS)])
-    assert both_seeds == 2
-    refused_text = capsys.readouterr().out
-    assert "Refusing to average" in refused_text
-    assert "minus-hurricane-michael-seed2" in refused_text
+    michael_route = main(["oof-route", "--disaster", "hurricane-michael", "--folds", str(FOLDS)])
+    assert michael_route == 0
+    michael_text = capsys.readouterr().out
+    assert "fold=minus-hurricane-michael\n" in michael_text
+    assert "seed=1" in michael_text
+    assert "minus-hurricane-michael-seed2" not in michael_text
+    assert "averaged=false" in michael_text
+    seed2_train = main(
+        ["train-xbd", "--fold", "minus-hurricane-michael-seed2", "--folds", str(FOLDS), "--dry-run"]
+    )
+    assert seed2_train == 0
     refused = main(["oof-route", "--disaster", "hurricane-harvey", "--folds", str(FOLDS)])
     assert refused == 2
     pipeline = main(["oof-route", "--disaster", "santa-rosa-wildfire", "--folds", str(FOLDS)])
