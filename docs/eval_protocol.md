@@ -49,6 +49,14 @@ The definitions in this section must be filled in and committed before the first
 
   Ground-only buildings are not counted as insufficient evidence. Coverage classes are descriptive inventory statistics only. They are not a stratification of the unreliability metrics.
 
+### CAL FIRE DINS point-to-footprint matching (frozen)
+
+DINS records are points. A point matches a building if and only if it falls inside exactly one xBD footprint, or it falls inside no footprint and exactly one footprint lies within 10 m. A point inside two or more footprints, or with two or more candidate footprints within 10 m, is dropped as ambiguous. The 10 m radius is frozen now and must not be tuned after seeing match rates.
+
+The source must be the official CAL FIRE DINS release. The download date and the file sha256 are recorded in the change log. For Nuns and Tubbs fire points, keep only points inside the xBD `santa-rosa-wildfire` tile extents. Points outside those extents are a coverage issue and are reported separately. They are not counted as matching drops.
+
+The first audit reports only matched counts and drop reasons. Conflict is not defined with xBD official labels. It is computed only after the frozen ViT-B seed 1 head exists.
+
 ## 2. Split
 
 - **Primary:** event-level holdout.
@@ -154,3 +162,5 @@ These predictions are fixed before the first statistics run. They are not to be 
 - 2026-11-17, restricted the scorable set to footprints with an independent reference and sufficient satellite evidence, so cloud or no-data cannot create free unreliable labels; froze the conflict-label head as the xBD baseline damage head (ViT-B, seed 1), trained without any test event, with out-of-fold predictions for events used to train the conflict signal; matching ambiguity is only two or more candidates with IoU ≥ 0.3, or a best/second-best score ratio < 1.2, and 30 m is the localization-error limit only.
 - Checkpoint hash (sha256 of the frozen xBD baseline checkpoint file): TBD, to be filled before conflict labels are computed.
 - 2026-11-17, pre-registered transfer claims, the satellite-only continued-pretraining control, and predictions P1–P6.
+- 2026-11-17, froze the CAL FIRE DINS point-to-footprint matching rule, including the 10 m radius.
+- Official CAL FIRE DINS release: download date TBD, file sha256 TBD, to be filled when the release is downloaded.
