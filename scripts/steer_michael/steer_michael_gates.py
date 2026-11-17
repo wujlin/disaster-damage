@@ -1098,24 +1098,53 @@ def main():
                 entry["note"] = f"F=1 grade 3 with unexpected label {entry['wind_mapped']!r}"
                 F1_grade3_unknown.append(entry)
 
-    # Possible U_F,only samples identified without computing U or reading Y-hat^s:
-    # Y=major/destroyed cannot be U_F,only (a no/minor satellite call would also
-    # set U_E=1). Remaining F=1 cases with no official no/minor/major/destroyed
-    # Y are the grade-3 unknowns and the wind-disagree footprint.
+    # Scorable U table and U_F,only candidates, identified without computing U
+    # or reading satellite predictions / Y-hat^s.
+    # A landed 4-class Y is no-damage, minor, major, or destroyed. Unknown and
+    # excluded-inconsistent have no 4-class Y: they stay in Q but are excluded
+    # from the scorable U table. Never treat satellite != unknown as U_E=1 on
+    # a building with no 4-class Y. U_F,only requires U_E=0 and a satellite
+    # prediction of no or minor, so among buildings with a landed 4-class Y
+    # only F=1 with Y in {no-damage, minor} could qualify.
+    LANDED_4CLASS_Y = {"no-damage", "minor", "major", "destroyed"}
+
+    def official_wind_label(b):
+        if b["wind_in_Y"]:
+            return (b.get("wind_mapped") or {}).get("mapped")
+        if not b["wind_agree"]:
+            return "excluded_inconsistent"
+        return "excluded_wind_grade_-1"
+
+    def _sorted_uids(buildings):
+        return sorted(b["footprint_uid"] for b in buildings)
+
+    scorable_U_buildings = [
+        b for b in Q_buildings if official_wind_label(b) in LANDED_4CLASS_Y
+    ]
+    unknown_no_4class_Y = [
+        b for b in Q_buildings if official_wind_label(b) == "unknown"
+    ]
+    excluded_inconsistent_from_scorable_U = [
+        b for b in Q_buildings if official_wind_label(b) == "excluded_inconsistent"
+    ]
+    excluded_wind_grade_m1_from_scorable_U = [
+        b for b in Q_buildings if official_wind_label(b) == "excluded_wind_grade_-1"
+    ]
+    F1_wind_Y_undefined = [
+        b for b in Q_buildings
+        if b["F_info"]["F"] == 1 and official_wind_label(b) not in LANDED_4CLASS_Y
+    ]
+    u_f_only_candidates = [
+        b for b in scorable_U_buildings
+        if b["F_info"]["F"] == 1
+        and official_wind_label(b) in {"no-damage", "minor"}
+    ]
+    scorable_U_ids = _sorted_uids(scorable_U_buildings)
+    unknown_excluded_ids = _sorted_uids(unknown_no_4class_Y)
+    excluded_inconsistent_ids = _sorted_uids(excluded_inconsistent_from_scorable_U)
+    F1_wind_Y_undefined_ids = _sorted_uids(F1_wind_Y_undefined)
+    u_f_only_candidate_ids = _sorted_uids(u_f_only_candidates)
     possible_UF_only = []
-    for e in F1_grade3_unknown:
-        possible_UF_only.append({
-            **e,
-            "why_possible_U_F_only": "F=1 and wind grade 3 landed as unknown; no official 4-class Y",
-        })
-    for e in F1_inconsistent_wind:
-        possible_UF_only.append({
-            **e,
-            "why_possible_U_F_only": (
-                "F=1 and inconsistent multi-point wind grades; dropped from "
-                "wind Y, so no official 4-class Y"
-            ),
-        })
 
     F_unobs_footprints = [
         {
@@ -1181,15 +1210,76 @@ def main():
                 "footprints are unobserved, not F=1."
             ),
         },
+        "F1_wind_Y_undefined": F1_wind_Y_undefined_ids,
+        "F1_wind_Y_undefined_note": (
+            "F=1 buildings with no landed 4-class wind Y. "
+            "Footprint 8262c29a-cd4b-42f8-91bc-eef3af82f2c6 is "
+            "excluded-inconsistent from wind Y, so U_E and U_F,only are "
+            "undefined until a 4-class Y exists. Kept in Q; excluded from "
+            "the scorable U table. F=1 may be recorded separately; U is not "
+            "computed."
+        ),
+        "F1_wind_Y_undefined_buildings": [
+            {
+                "footprint_uid": b["footprint_uid"],
+                "fulcrum_ids": b["fulcrum_ids"],
+                "wind_grades": b["wind_grades"],
+                "official_wind_label": official_wind_label(b),
+                "F": b["F_info"]["F"],
+            }
+            for b in sorted(F1_wind_Y_undefined, key=lambda x: x["footprint_uid"])
+        ],
+        "unknown_excluded_from_scorable_U": unknown_excluded_ids,
+        "unknown_excluded_from_scorable_U_note": (
+            "These buildings have wind Y landed as unknown, so they have no "
+            "4-class Y. They stay in Q but are excluded from the scorable U "
+            "table. Never treat a satellite prediction other than unknown as "
+            "U_E=1 on these buildings. U is not computed."
+        ),
+        "excluded_inconsistent_from_scorable_U": excluded_inconsistent_ids,
+        "excluded_inconsistent_from_scorable_U_note": (
+            "Multi-point footprints dropped from wind Y because the points "
+            "disagree on wind grade. They stay in Q but are excluded from "
+            "the scorable U table. U_E and U_F,only are undefined without a "
+            "4-class Y."
+        ),
+        "excluded_wind_grade_-1_from_scorable_U": _sorted_uids(
+            excluded_wind_grade_m1_from_scorable_U
+        ),
+        "scorable_U_n": len(scorable_U_ids),
+        "scorable_U_ids": scorable_U_ids,
+        "scorable_U_note": (
+            "Scorable U ids are buildings in Q with a landed 4-class wind Y "
+            "(no-damage, minor, major, or destroyed). The list excludes "
+            "unknown and excluded-inconsistent (and wind grade -1 if any). "
+            "U is not computed."
+        ),
+        "u_f_only_candidates": u_f_only_candidate_ids,
+        "u_f_only_candidates_note": (
+            "Candidates are buildings with a landed 4-class wind Y in "
+            "{no-damage, minor} and observed F=1. U_F,only requires U_E=0 "
+            "and a satellite prediction of no or minor. Identified without "
+            "computing U and without reading satellite predictions. Among "
+            "buildings with a landed 4-class Y, every F=1 building in this "
+            "event is major or destroyed, so none can be U_F,only: a "
+            "no/minor satellite call would set U_E=1. The 8 unknown "
+            "buildings and the excluded-inconsistent footprints, including "
+            "8262c29a, have no 4-class Y and are not scorable for U. This "
+            "event has no independent U_F,only sample in the main test."
+        ),
+        "no_independent_U_F_only_sample_in_main_test": True,
         "possible_U_F_only_samples": {
             "n": len(possible_UF_only),
             "note": (
-                "Identified without computing U and without reading Y-hat^s. "
-                "U_F,only requires F=1 and U_E=0. Buildings whose official Y is "
-                "major or destroyed cannot be U_F,only, because a satellite "
-                "no/minor call would also set U_E=1. The remaining F=1 cases "
-                "with no official 4-class Y are the grade-3 unknowns and any "
-                "F=1 wind-disagree footprint. These stay in Q."
+                "Same set as u_f_only_candidates. Identified without "
+                "computing U and without reading Y-hat^s. U_F,only requires "
+                "U_E=0 and a satellite prediction of no or minor, so only "
+                "buildings with a landed 4-class Y in {no-damage, minor} and "
+                "F=1 could qualify. That set is empty for this event. "
+                "Unknown and excluded-inconsistent buildings, including "
+                "8262c29a, have no 4-class Y: U_E and U_F,only are undefined "
+                "and they are not listed here. This event has no independent "
+                "U_F,only sample in the main test."
             ),
             "buildings": possible_UF_only,
         },
@@ -1594,7 +1684,7 @@ Matching rule unchanged (frozen 10 m / IoU>0.5, no offset).
 - Grade 3 in wind Y: {landing['grade_3']['n_buildings_in_wind_Y']} buildings; {landing['grade_3']['major']} -> major (roof or wall structure damage >0); {landing['grade_3']['unknown']} -> unknown (listed in wind_grade3_unknown.csv).
 - Grade 4: {landing['grade_4']['n_buildings_with_a_grade4_point']} buildings in Q have a grade-4 point ({landing['grade_4']['n_in_wind_Y']} in wind Y, {landing['grade_4']['n_multi_point_wind_disagree_still_in_Q']} also have a disagreeing other-grade point). In wind Y, {landing['grade_4']['destroyed_in_wind_Y']} upgraded to destroyed under rule (2) (roof and wall structure both recorded as 100); {landing['grade_4']['major_in_wind_Y']} remain major (wind4_not_upgraded); {landing['grade_4']['unknown_in_wind_Y']} unknown. The 17-building upgrade list is wind_grade4_upgrade_list.csv. P7 conservative-mapping sensitivity is a separate output and does not replace these main counts.
 - Building-level wind labels in Q: no_damage={wind_label_counts['no_damage']}, minor={wind_label_counts['minor']}, major={wind_label_counts['major']}, destroyed={wind_label_counts['destroyed']}, unknown={wind_label_counts['unknown']}, excluded_inconsistent={wind_label_counts['excluded_inconsistent']}. Grade 2 maps to minor per the frozen protocol; there is no moderate class.
-- F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; F=0: {F_observability['n_F_eq_0']}; unobserved: {F_observability['n_F_unobserved']} (missing {F_observability['n_F_unobserved_missing']}, inconsistent multi-point {F_observability['n_F_unobserved_inconsistent_multi_point']}, never F=0). F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} F=1 wind-disagree footprints. Grade-3 F=1 split major/unknown: {F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['major']}/{F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['unknown']}. Possible U_F,only samples (no U computed): {F_observability['possible_U_F_only_samples']['n']}.
+- F observability in Q: wall_structure_damage_ non-missing={F_observability['n_wall_structure_damage_non_missing']}; F=1: {F_observability['n_F_eq_1']}; F=0: {F_observability['n_F_eq_0']}; unobserved: {F_observability['n_F_unobserved']} (missing {F_observability['n_F_unobserved_missing']}, inconsistent multi-point {F_observability['n_F_unobserved_inconsistent_multi_point']}, never F=0). F=1 by wind grade: {F_observability['F_eq_1_by_wind_grade']['0']}/{F_observability['F_eq_1_by_wind_grade']['1']}/{F_observability['F_eq_1_by_wind_grade']['2']}/{F_observability['F_eq_1_by_wind_grade']['3']}/{F_observability['F_eq_1_by_wind_grade']['4']} (grades 0-4) plus {F_observability['F_eq_1_by_wind_grade']['inconsistent_multi_point']} F=1 wind-disagree footprints. Grade-3 F=1 split major/unknown: {F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['major']}/{F_observability['F_eq_1_by_wind_grade']['grade_3_F_eq_1_split']['unknown']}. F=1 with no 4-class wind Y (U undefined): {len(F_observability['F1_wind_Y_undefined'])}. Scorable U n={F_observability['scorable_U_n']} (excludes unknown and excluded-inconsistent). U_F,only candidates: {len(F_observability['u_f_only_candidates'])}. This event has no independent U_F,only sample in the main test. U is not computed.
 
 ## Old 16/14 vs 18/17 mismatch
 {unit_mismatch['explanation']}
@@ -1647,6 +1737,12 @@ P7 does not replace main counts. No U, no GPU, no downloads, matching rule uncha
                 "unknown": F_observability["F_eq_1_by_wind_grade"]["grade_3_F_eq_1_split"]["unknown"],
             },
             "possible_U_F_only_n": F_observability["possible_U_F_only_samples"]["n"],
+            "F1_wind_Y_undefined": F_observability["F1_wind_Y_undefined"],
+            "unknown_excluded_from_scorable_U": F_observability["unknown_excluded_from_scorable_U"],
+            "excluded_inconsistent_from_scorable_U": F_observability["excluded_inconsistent_from_scorable_U"],
+            "scorable_U_n": F_observability["scorable_U_n"],
+            "u_f_only_candidates": F_observability["u_f_only_candidates"],
+            "no_independent_U_F_only_sample_in_main_test": F_observability["no_independent_U_F_only_sample_in_main_test"],
         },
         "edge_outside_tile_poly": summary["Q_building_level"]["edge_outside_tile_poly"],
         "count_unit_note_short": {
