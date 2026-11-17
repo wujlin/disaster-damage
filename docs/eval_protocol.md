@@ -64,6 +64,28 @@ The first audit reports only matched counts and drop reasons. Conflict is not de
 
 Buildings used to train the conflict signal, and their neighboring spatial blocks, never enter the test set.
 
+### Leave-one-reference-event-out damage heads
+
+The satellite damage head is DINOv2 ViT-B/14, seed 1. Conflict labels are computed later from that head. A reference event is an event with an independent ground reference. Each fold holds that event out of one damage head entirely.
+
+For a fold head, every image whose xBD `metadata.disaster` is the held-out event is removed from the official train, test, and hold splits used by that head. Membership is counted from those files by the exact disaster string. The count in each of those three splits is asserted to be 0. The removed images are a separate eval set for that head. They are not used as train or val, and they are not part of that head's in-fold test or hold. In this repository the hold split is named `holdout`. Some releases store it in a directory named `hold`; `data.split_dirs.holdout` points at that directory. There is no separate official val split.
+
+Folds are an appendable list in `configs/folds/event_folds.yaml`. Adding a later fold, such as `minus-hurricane-florence`, is a new list entry. Out-of-fold scoring reads that list. It does not hardcode fold names or a fixed number of reference folds.
+
+A building is scored only by a head that never saw its event. A Michael building (`hurricane-michael`) is routed to the fold that holds out Michael. A Palu building (`palu-tsunami`) is routed to the fold that holds out Palu. A head that saw the event does not produce \(\hat{Y}^{s}\) for that event. Eligible heads are not averaged. Events that no enabled reference fold holds out are not scored.
+
+Active reference folds, seed 1:
+
+- `minus-hurricane-michael` is the main fold. It holds out `hurricane-michael`. It is enabled now. xBD already contains those tiles.
+- `minus-palu-tsunami` holds out `palu-tsunami`. It is enabled, and the fold name trains and evaluates end to end.
+
+Pipeline checks, not Claim-2 evidence:
+
+- `minus-santa-rosa` holds out `santa-rosa-wildfire`. It is not the seed-1 main fold.
+- `minus-socal` holds out `socal-fire` (Woolsey/socal). Santa Rosa and Woolsey/socal are a wildfire pipeline check, not Claim-2 evidence.
+
+Fold name, held-out event, seed, manifest sha256, and checkpoint sha256 are recorded in `docs/folds.md`. The manifest sha256 is written when the fold is applied to a data root. Checkpoint sha256 stays TBD until that head is trained. No-fold training still uses the full official train split.
+
 ## 3. Baselines
 
 Under the same hidden-photo setting (satellite imagery and footprint only; reference and any ground photo hidden), compare against:
@@ -164,3 +186,4 @@ These predictions are fixed before the first statistics run. They are not to be 
 - 2026-11-17, pre-registered transfer claims, the satellite-only continued-pretraining control, and predictions P1–P6.
 - 2026-11-17, froze the CAL FIRE DINS point-to-footprint matching rule, including the 10 m radius.
 - Official CAL FIRE DINS release: download date TBD, file sha256 TBD, to be filled when the release is downloaded.
+- 2026-11-17, recorded the leave-one-reference-event-out rule for the satellite damage head (ViT-B, seed 1). The main fold is `minus-hurricane-michael`. `minus-palu-tsunami` is the second enabled reference fold. `minus-santa-rosa` and `minus-socal` are pipeline checks, not Claim-2 evidence. Santa Rosa and Woolsey/socal are a wildfire pipeline check. Manifest and checkpoint sha256 values for these heads stay TBD in `docs/folds.md` until a head is trained. This entry does not change grade mapping, matching thresholds, the 10 m DINS rule, or other frozen protocol numbers.

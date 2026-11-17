@@ -6,7 +6,7 @@ Two pathways stay separate. The identity/geometry pathway is where a later multi
 
 This repository does not download datasets or checkpoints, and it does not start training on import. The ViT-B entry point is a frozen DINOv2 probe with a small damage head. There is no ViT-L setup.
 
-[Evaluation protocol](docs/eval_protocol.md)
+[Evaluation protocol](docs/eval_protocol.md). [Event folds](docs/folds.md).
 ## Layout
 
 ```
@@ -14,6 +14,7 @@ configs/overlap_audit.yaml      event buffer, date window, data roots
 configs/event_catalog.yaml      date-specific event ids and known name collisions
 configs/sagin_loader.yaml       place-grouped SAGIN loader
 configs/xbd_dinov2_vitb.yaml    official-split ViT-B baseline
+configs/folds/event_folds.yaml  leave-one-reference-event-out folds (seed 1)
 src/mvbridge/                   package
 scripts/                        thin wrappers around the same entry points
 tests/                          fake metadata, fake xBD labels, pathway checks
@@ -162,9 +163,17 @@ python -m mvbridge train-xbd \
 
 `--max-steps 20` stops after a few updates for a debugging pass. Logs go to stdout and `output_dir/run.log`: resolved config, device, class histogram, first image ids, first-batch shapes, per-step loss, and a checkpoint that stores the damage pathway and the head, not a second copy of the backbone. Identity parameters stay frozen (`identity_trainable=0`). The optimizer lists only the damage pathway and the damage head.
 
+Leave-one-reference-event-out training passes `--fold`. The default command above does not, and still uses the full official train split. The main seed-1 fold holds out `hurricane-michael`. `minus-palu-tsunami` is the second reference fold. `minus-santa-rosa` and `minus-socal` are pipeline checks, not Claim-2 evidence. See [docs/folds.md](docs/folds.md).
+
+```bash
+python -m mvbridge train-xbd --fold minus-hurricane-michael
+```
+
+On WSB the Michael fold reads `/data/repo/datasets/xbd` and `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and writes `/data/repo/outputs/minus-hurricane-michael`. On WSA the Palu fold uses `/mnt/data_hdd/datasets/xbd`, `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and `/mnt/data_hdd/outputs/minus-palu-tsunami`. Both folds pin batch size 32, AMP `bfloat16`, and torch `2.15.0`. The run logs the real torch, CUDA, and GPU name and stops if the torch release differs. It does not change the pin for the 4090 or the 5880. `python -m mvbridge oof-route --disaster hurricane-michael` prints the head that may score Michael buildings. It does not average heads.
+
 Image size must be a multiple of 14. The default 224 is a short-side probe; 518 matches the DINOv2 training resolution and is a config change, not a different backbone. `vit_large_*` is rejected.
 
-Evaluation is a separate entry point and accepts only `test` or `holdout`:
+Evaluation without a fold accepts only `test` or `holdout`:
 
 ```bash
 python -m mvbridge eval-xbd \
@@ -175,6 +184,8 @@ python -m mvbridge eval-xbd \
 ```
 
 It writes `metrics_test.json` with accuracy, per-class precision/recall/F1, weighted F1, and the confusion matrix. Weighted F1 is the summary used in the xBD paper. The baseline itself trains with unweighted cross-entropy and logs the class histogram, because the label distribution is heavily no-damage.
+
+With `--fold`, `--split fold-eval` scores only the images that fold removed from train, test, and hold. `--split test` or `--split holdout` with `--fold` is the in-fold split, and the held-out event is absent. The checkpoint's recorded fold must match `--fold`.
 
 The supervised task is building-level classification. Each post-disaster polygon with subtype `no-damage`, `minor-damage`, `major-damage`, or `destroyed` becomes one example. `un-classified` polygons and non-building features are skipped. Crops are square boxes around the `xy` polygon, padded by `crop_padding`, taken from the pre and post images of that official pair. The damage pathway projects the two frozen ViT-B class tokens separately, forms `post_proj - pre_proj`, and the head reads that residual together with the post projection. Detached patch tokens are on `DamageState` so a later change-detection head can replace `DamageHead` without taking the identity parameters.
 
