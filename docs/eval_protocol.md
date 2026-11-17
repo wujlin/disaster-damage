@@ -106,6 +106,8 @@ Under the hidden-photo protocol, a satellite encoder after SAGIN multi-view cont
 
 Required control. A satellite-only continued-pretraining encoder uses exactly the same SAGIN satellite images, the same compute and steps, and the same augmentations, with only the cross-view term removed. Claim 1 is attributed to multi-view transfer only if the SAGIN multi-view encoder beats this control.
 
+Public DINOv3 ViT-L/16 SAT-493M weights (timm `vit_large_patch16_dinov3.sat493m`) are reported as a strong satellite-only reference row, evaluated as frozen features with the same probe as the other rows. This row is not the matched control for Claim 1. That control remains continued pretraining on the same SAGIN satellite images, with the same steps and augmentations, and only the cross-view term removed. The SAT-493M weight-file sha256 is TBD and is recorded when the file is copied. The conflict-label head stays the frozen ViT-B seed 1 head. SAT-493M is only a compared method and is never used to define labels.
+
 ### Claim 2 (cross-event transfer)
 
 \(g(X^{s})\) learned on some events with privileged references beats the uncertainty baselines on held-out events. The primary test is a within-disaster-type event holdout. The secondary, harder test is a cross-disaster-type holdout. If the event holdout fails and the within-event spatial-block holdout succeeds, Claim 2 is falsified and only within-event generalization is claimed.
@@ -165,3 +167,4 @@ These predictions are fixed before the first statistics run. They are not to be 
 - 2026-11-17, froze the CAL FIRE DINS point-to-footprint matching rule, including the 10 m radius.
 - Official CAL FIRE DINS release: download date TBD, file sha256 TBD, to be filled when the release is downloaded.
 - 2026-11-17, clarified DINS in-footprint precedence: a point inside exactly one footprint matches even if other footprints lie within 10 m. The 10 m rule applies only to points outside every footprint, and distance is the shortest point-to-polygon distance, not the distance to the centroid.
+- 2026-11-17, added public DINOv3 ViT-L/16 SAT-493M weights (timm `vit_large_patch16_dinov3.sat493m`) as a strong satellite-only reference row, evaluated as frozen features with the same probe as the other rows. It is not the matched control for Claim 1, which remains continued pretraining on the same SAGIN satellite images with the same steps and augmentations and only the cross-view term removed. Weight file sha256: TBD, recorded when copied. The conflict-label head stays the frozen ViT-B seed 1 head; SAT-493M is only a compared method and is never used to define labels.
