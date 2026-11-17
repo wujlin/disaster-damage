@@ -80,6 +80,72 @@ N is frozen as follows: at least 300 conflict footprints with independent refere
 
 This cutoff was filled and committed before the first statistics run. Later changes must be logged in the change log with the date and the reason.
 
+## Pre-registered claims and theoretical motivation
+
+Training may use satellite, UAV, and ground views. Deployment and evaluation inference use only the post-event satellite image plus the footprint. The claim under test is cross-modal and cross-event transfer of a satellite residual that predicts an unreliable satellite judgment. Fusion accuracy is outside this protocol.
+
+### Notation
+
+\(X^{s}\) is the satellite image together with the footprint. \(X^{g}\) is the ground or UAV view. \(Y\) is the independent non-satellite damage grade. \(F\) is the frozen facade-damage indicator. The frozen satellite judgment is \(\hat{Y}^{s} = h_{\mathrm{frozen}}(X^{s})\), the xBD baseline damage head (ViT-B, seed 1) defined above. The conflict label is
+
+\(U = \mathbf{1}\{\hat{Y}^{s} \neq Y\} \lor \mathbf{1}\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\} \land F = 1\}\).
+
+The target is \(\eta(x^{s}) = P(U = 1 \mid X^{s} = x^{s})\). \(U\) is observable only on the scorable set \(Q\) (an independent reference and sufficient satellite evidence). The deployment set is \(D\): sufficient satellite evidence and no \(X^{g}\). \(Z^{s}_{\theta}\) is the satellite representation produced by encoder parameters \(\theta\). \(\theta_{0}\) is the off-the-shelf DINOv2 initialization. \(\theta_{1}\) is the same architecture after SAGIN multi-view continued pretraining. \(g(X^{s})\) is a predictor of \(U\) read from \(X^{s}\).
+
+### Claim 1 (cross-modal transfer)
+
+Under the hidden-photo protocol, a satellite encoder after SAGIN multi-view continued pretraining predicts unreliability better than the same architecture from the off-the-shelf DINOv2 initialization: \(I(Z^{s}_{\theta_{1}}; U) > I(Z^{s}_{\theta_{0}}; U)\). The gain must concentrate on the facade-conflict subset \(\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\}, F = 1\}\) and must beat the entropy and \(1 - \max p\) baselines. Any failure falsifies Claim 1.
+
+Required control. A satellite-only continued-pretraining encoder uses exactly the same SAGIN satellite images, the same compute and steps, and the same augmentations, with only the cross-view term removed. Claim 1 is attributed to multi-view transfer only if the SAGIN multi-view encoder beats this control.
+
+### Claim 2 (cross-event transfer)
+
+\(g(X^{s})\) learned on some events with privileged references beats the uncertainty baselines on held-out events. The primary test is a within-disaster-type event holdout. The secondary, harder test is a cross-disaster-type holdout. If the event holdout fails and the within-event spatial-block holdout succeeds, Claim 2 is falsified and only within-event generalization is claimed.
+
+### Identification
+
+\(\eta\) is identifiable from the privileged samples if and only if, on the satellite-sufficient slice, \(U\) is independent of membership in \(Q\) given \(X^{s}\) (selection ignorability). This is Assumption C. It is recorded here and is not treated as holding by default.
+
+### Information decomposition
+
+Information about \(Y\) splits into a redundant part (roof collapse or a large burn visible in both views), a satellite-unique part, and a ground-unique part \(I(X^{g}; Y \mid X^{s})\). Facade conflicts arise mainly from the ground-unique part. They are predictable from \(X^{s}\) only if a satellite residual \(W(X^{s})\) exists with \(I(W; U) > 0\).
+
+Assumption A, which is testable: \(I(X^{s}; U \mid \sigma(\hat{Y}^{s}, c(h_{\mathrm{frozen}}(X^{s})))) > 0\), where \(c\) is the entropy or the maximum probability of the frozen head, and \(\sigma\) is the sigma-algebra those statistics generate. If Assumption A fails, no satellite-only method should beat the uncertainty baselines on facade conflicts.
+
+### Why Claim 1 may hold
+
+Claim 1 is the inequality \(I(Z^{s}_{\theta_{1}}; U) > I(Z^{s}_{\theta_{0}}; U)\), and it is expected to be more pronounced on \(\{\hat{Y}^{s} \in \{\mathrm{no},\mathrm{minor}\}, F = 1\}\). The mechanism is that the multi-view objective forces the satellite encoder to retain factors that are legible in \(X^{g}\) and weak in \(X^{s}\).
+
+Risk, Assumption D. A DINO-style identity alignment may erase damage state as a nuisance. Identity and geometry features therefore stay separate from a damage residual pathway, and the invariance term must not be too strong.
+
+### Shift levels for Claim 2
+
+Three shift levels are distinguished.
+
+- Covariate shift: \(P_{e}(X^{s})\) changes across events while \(P(U \mid X^{s})\) stays invariant. Ranking transfers where the supports overlap.
+- Prior shift: \(P_{e}(U)\) changes. ECE degrades. PR-AUC and precision@K may still hold.
+- Concept shift: \(P_{e}(U \mid X^{s})\) changes, as when flood, fire, and earthquake physics differ.
+
+Assumption B: \(P(U \mid X^{s}, \tau)\) is invariant within a disaster type \(\tau\), and only within that type.
+
+### Failure modes
+
+- Assumption A fails: facade-subset PR-AUC is near random, and there is no win over the uncertainty baselines.
+- Assumption B fails: event holdout drops to the baselines while the spatial-block holdout stays good (an event shortcut).
+- Assumption C fails: performance is good on \(Q\) and worse in calibration or ranking on low photo-density slices. \(P(X^{s}, \hat{Y}^{s} \mid Q)\) differs from the same joint on satellite-only buildings.
+- Assumption D fails: cross-view distance drops while the facade probe worsens.
+
+### Pre-registered predictions
+
+These predictions are fixed before the first statistics run. They are not to be changed after results are seen.
+
+- **P1.** Freeze the median entropy of non-conflict samples from the training events. Report the fraction of test conflicts whose entropy is below that median. If that fraction is not significantly above 50%, conflicts are mostly high-uncertainty cases and both claims have little room. P1 is the cheapest check and is run first.
+- **P2.** The SAGIN gain comes mainly from the facade-conflict subset, not from roof-visible major-damage or destroyed disagreements.
+- **P3.** Under hidden photos and event holdout, the method must beat both entropy and \(1 - \max p\). This is necessary for both claims.
+- **P4.** Within-type event transfer is stronger than cross-type transfer. If only the former holds, the reported claim is type-conditional transfer.
+- **P5.** Coverage bias is an identification threat, not a contribution. Compare \(P(X^{s}, \hat{Y}^{s}, \mathrm{grade})\) between buildings with a photo and buildings without one, and pre-register inverse-propensity or overlap-reweighting robustness checks.
+- **P6.** If continued pretraining increases view invariance and lowers the facade probe, weaken the invariance term or add the damage residual head rather than increasing alignment.
+
 ## Change log
 
 - 2026-11-17, protocol drafted from Algorithm Researcher's spec.
@@ -87,3 +153,4 @@ This cutoff was filled and committed before the first statistics run. Later chan
 - 2026-11-17, froze insufficient-evidence rules and coverage classes; metrics stratified by disaster type only.
 - 2026-11-17, restricted the scorable set to footprints with an independent reference and sufficient satellite evidence, so cloud or no-data cannot create free unreliable labels; froze the conflict-label head as the xBD baseline damage head (ViT-B, seed 1), trained without any test event, with out-of-fold predictions for events used to train the conflict signal; matching ambiguity is only two or more candidates with IoU ≥ 0.3, or a best/second-best score ratio < 1.2, and 30 m is the localization-error limit only.
 - Checkpoint hash (sha256 of the frozen xBD baseline checkpoint file): TBD, to be filled before conflict labels are computed.
+- 2026-11-17, pre-registered transfer claims, the satellite-only continued-pretraining control, and predictions P1–P6.
