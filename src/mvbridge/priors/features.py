@@ -283,8 +283,8 @@ def _feature_for_row(
             elevation_missing=elevation_missing,
             distance_to_water_m=water_m,
             water_missing=water_missing,
-            window_30m_edge=False,
-            window_100_300m_edge=False,
+            window_30m_edge=None,
+            window_100_300m_edge=None,
             window_30m_observed_area_m2=None,
             window_100_300m_observed_area_m2=None,
             focal_in_survey=row.in_survey,
@@ -300,6 +300,8 @@ def _feature_for_row(
     edge_300 = coverage.disk_is_edge(x0, y0, annulus_outer_m)
     area_30 = coverage.observed_disk_area_m2(x0, y0, near_radius_m)
     area_ring = coverage.observed_annulus_area_m2(x0, y0, annulus_inner_m, annulus_outer_m)
+    if coverage.unbounded:
+        notes.append("window_edge_unknown_missing_coverage")
     if edge_30:
         notes.append("window_30m_tile_or_map_edge")
     if edge_300:

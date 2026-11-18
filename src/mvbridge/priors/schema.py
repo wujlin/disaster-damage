@@ -172,8 +172,8 @@ class Group3FeatureRow:
     elevation_missing: bool
     distance_to_water_m: float | None
     water_missing: bool
-    window_30m_edge: bool
-    window_100_300m_edge: bool
+    window_30m_edge: bool | None
+    window_100_300m_edge: bool | None
     window_30m_observed_area_m2: float | None
     window_100_300m_observed_area_m2: float | None
     focal_in_survey: bool

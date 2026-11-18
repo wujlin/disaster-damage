@@ -27,9 +27,13 @@ SYNTHETIC_ORIGIN_LAT = 10.0
 SYNTHETIC_ORIGIN_LON = 20.0
 SYNTHETIC_EVENT = "synthetic-group3-fixture"
 
-# A later-published fictitious DEM vintage, for as-of tests.
-FUTURE_DEM_AVAILABLE_FROM = date(2025, 1, 1)
+# Acquisition windows and publication dates are stored separately.
+STATIC_DEM_ACQUIRED_FROM = date(2011, 1, 1)
+STATIC_DEM_ACQUIRED_UNTIL = date(2015, 12, 31)
 STATIC_DEM_AVAILABLE_FROM = date(2015, 1, 1)
+LATE_DEM_PUBLISHED_FROM = date(2025, 1, 1)
+FUTURE_DEM_ACQUIRED_FROM = date(2025, 1, 1)
+WATER_ACQUIRED_FROM = date(2016, 1, 1)
 WATER_AVAILABLE_FROM = date(2016, 1, 1)
 
 
@@ -186,6 +190,8 @@ def build_default_fixture() -> Group3Fixture:
         lons=np.asarray(lons),
         values_m=values,
         available_from=STATIC_DEM_AVAILABLE_FROM,
+        acquired_from=STATIC_DEM_ACQUIRED_FROM,
+        acquired_until=STATIC_DEM_ACQUIRED_UNTIL,
         layer_id="synthetic_dem_static",
     )
     coast = [offset_lat_lon(float(x), -80.0, frame) for x in np.linspace(-500.0, 500.0, 21)]
@@ -193,6 +199,7 @@ def build_default_fixture() -> Group3Fixture:
         polylines=[coast],
         frame=frame,
         available_from=WATER_AVAILABLE_FROM,
+        acquired_from=WATER_ACQUIRED_FROM,
         layer_id="synthetic_coast",
     )
     return Group3Fixture(
@@ -209,15 +216,30 @@ def build_default_fixture() -> Group3Fixture:
     )
 
 
-def future_elevation_grid(fixture: Group3Fixture | None = None) -> ElevationGrid:
-    """A DEM with a publication date after the fixture acquisition date."""
+def late_published_elevation_grid(fixture: Group3Fixture | None = None) -> ElevationGrid:
+    """Early acquisition, but a publication date after the 2018 fixture as-of."""
     fixture = fixture or build_default_fixture()
     return ElevationGrid(
         lats=fixture.elevation.lats.copy(),
         lons=fixture.elevation.lons.copy(),
         values_m=fixture.elevation.values_m.copy(),
-        available_from=FUTURE_DEM_AVAILABLE_FROM,
-        layer_id="synthetic_dem_future",
+        available_from=LATE_DEM_PUBLISHED_FROM,
+        acquired_from=STATIC_DEM_ACQUIRED_FROM,
+        acquired_until=STATIC_DEM_ACQUIRED_UNTIL,
+        layer_id="synthetic_dem_late_published",
+    )
+
+
+def future_acquired_elevation_grid(fixture: Group3Fixture | None = None) -> ElevationGrid:
+    """A DEM whose collection window starts after the 2018 fixture as-of date."""
+    fixture = fixture or build_default_fixture()
+    return ElevationGrid(
+        lats=fixture.elevation.lats.copy(),
+        lons=fixture.elevation.lons.copy(),
+        values_m=fixture.elevation.values_m.copy(),
+        available_from=FUTURE_DEM_ACQUIRED_FROM,
+        acquired_from=FUTURE_DEM_ACQUIRED_FROM,
+        layer_id="synthetic_dem_future_acquisition",
     )
 
 

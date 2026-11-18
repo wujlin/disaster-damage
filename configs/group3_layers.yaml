@@ -29,6 +29,8 @@ layers:
       Model. Distributed by OpenTopography. https://doi.org/10.5069/G9028PQB
     access_url: https://portal.opentopography.org/raster?opentopoID=OTSDEM.032021.4326.3
     license: Copernicus license, as stated by the OpenTopography distribution page
+    acquired_from: "2011-01-01"
+    acquired_until: "2015-12-31"
     product_available_from: "2021-04-22"
     checked_at: "2026-11-18T07:27:00+08:00"
     check_method: HTTP HEAD of the OpenTopography raster portal page
@@ -42,7 +44,11 @@ layers:
       exact bulk-listing URL was not confirmed. TanDEM-X acquisition is
       2011-2015 and therefore predates Michael and Palu, but the
       OpenTopography publication date recorded here is 2021-04-22, after
-      both events. The product is a DSM (includes buildings and vegetation).
+      both events. acquired_from / acquired_until are year bounds for that
+      already-noted 2011-2015 collection window; product_available_from stays
+      the publication date. Usability checks use the acquisition window, not
+      the publication date. The product is a DSM (includes buildings and
+      vegetation).
       Whether a post-2018 public DSM may be used as a static terrain prior
       for a 2018 retrospective is a scientific choice, not decided here.
 

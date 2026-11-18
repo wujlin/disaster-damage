@@ -80,8 +80,9 @@ class CoverageMap:
 
     Neighborhood windows that extend outside the imagery union are marked as
     tile/map edges so a count is not silently treated as a complete density.
-    If no imagery boxes are supplied, coverage is treated as unbounded and
-    edge flags stay false. That case is explicit: completeness is unknown.
+    If no imagery boxes are supplied, coverage extent is missing and edge
+    flags are unknown (None). False would be read as "not on the edge",
+    which is incorrect when the extent itself is absent.
     """
 
     imagery_boxes: tuple[AxisAlignedBox, ...] = ()
@@ -103,9 +104,9 @@ class CoverageMap:
             return False
         return any(box.contains(x, y) for box in self.survey_boxes)
 
-    def disk_is_edge(self, x: float, y: float, radius_m: float) -> bool:
+    def disk_is_edge(self, x: float, y: float, radius_m: float) -> bool | None:
         if self.unbounded:
-            return False
+            return None
         if not any(box.intersects_disk(x, y, radius_m) for box in self.imagery_boxes):
             return True
         return not any(box.contains_disk(x, y, radius_m) for box in self.imagery_boxes)

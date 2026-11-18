@@ -1,8 +1,10 @@
 """Elevation and distance-to-water lookups on the local metric plane.
 
 These adapters accept already-prepared grids and geometries. They do not
-download public rasters. A layer may be withheld when its provenance says it
-was not obtainable as of the requested date.
+download public rasters. A layer may be withheld when its acquisition window
+is after the requested as-of date, or when other validity checks fail.
+Publication or product-release dates are recorded separately and are not used
+as the acquisition cutoff.
 """
 
 from __future__ import annotations
@@ -20,13 +22,30 @@ def _as_date(value: date | None) -> date | None:
     return value
 
 
-def layer_usable(available_from: date | None, as_of: date | None, available_until: date | None = None) -> bool:
-    """True when a layer's stated vintage covers the analysis as-of date."""
+def layer_usable(
+    as_of: date | None,
+    *,
+    acquired_from: date | None = None,
+    acquired_until: date | None = None,
+    available_from: date | None = None,
+    available_until: date | None = None,
+    product_available_from: date | None = None,
+    product_available_until: date | None = None,
+) -> bool:
+    """True when the layer's acquisition window is valid for ``as_of``.
+
+    A layer is unusable when collection starts after the analysis date.
+    Publication or product-release dates (``available_from``,
+    ``product_available_from``, and the matching until fields) may be passed so
+    they stay recorded separately, but they are not used as this cutoff.
+    ``acquired_until`` is accepted as the end of the collection window; the
+    cutoff itself is whether acquisition started after ``as_of``.
+    """
+    del available_from, available_until, product_available_from, product_available_until
+    del acquired_until
     if as_of is None:
         return True
-    if available_from is not None and as_of < available_from:
-        return False
-    if available_until is not None and as_of > available_until:
+    if acquired_from is not None and acquired_from > as_of:
         return False
     return True
 
@@ -40,6 +59,8 @@ class ElevationGrid:
     values_m: np.ndarray
     available_from: date | None = None
     available_until: date | None = None
+    acquired_from: date | None = None
+    acquired_until: date | None = None
     layer_id: str = "elevation"
 
     def __post_init__(self) -> None:
@@ -54,7 +75,13 @@ class ElevationGrid:
             raise ValueError("elevation grid needs at least a 2x2 lattice")
 
     def usable(self, as_of: date | None) -> bool:
-        return layer_usable(self.available_from, as_of, self.available_until)
+        return layer_usable(
+            as_of,
+            acquired_from=self.acquired_from,
+            acquired_until=self.acquired_until,
+            available_from=self.available_from,
+            available_until=self.available_until,
+        )
 
     def sample(self, lat: float, lon: float, *, as_of: date | None = None) -> float | None:
         if not self.usable(as_of):
@@ -120,6 +147,8 @@ class WaterGeometries:
     frame: MetricFrame
     available_from: date | None = None
     available_until: date | None = None
+    acquired_from: date | None = None
+    acquired_until: date | None = None
     layer_id: str = "water"
 
     def __post_init__(self) -> None:
@@ -137,7 +166,13 @@ class WaterGeometries:
         self._segments = tuple(segments)
 
     def usable(self, as_of: date | None) -> bool:
-        return layer_usable(self.available_from, as_of, self.available_until)
+        return layer_usable(
+            as_of,
+            acquired_from=self.acquired_from,
+            acquired_until=self.acquired_until,
+            available_from=self.available_from,
+            available_until=self.available_until,
+        )
 
     def distance_m(self, lat: float, lon: float, *, as_of: date | None = None) -> float | None:
         if not self.usable(as_of):

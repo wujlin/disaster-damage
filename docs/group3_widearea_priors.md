@@ -19,16 +19,21 @@ For each footprint, in a local azimuthal-equidistant metric frame:
 3. Distance to the nearest *other* building that the satellite called
    collapsed (destroyed).
 4. Elevation at the footprint coordinate, when a DEM layer is supplied and
-   usable as of the requested date.
+   its acquisition window is valid for the requested as-of date.
+   Publication or product-release dates are recorded separately and are not
+   used as that cutoff.
 5. Distance to the nearest supplied water or coastline geometry, under the
-   same vintage rule.
+   same acquisition-window rule.
 
 Densities are counts of satellite-side alerts divided by the *observed*
 window area, reported per km². If an imagery tile or map extent is
 provided and the window is clipped, `window_*_edge` is set so a low count
-is not silently treated as a complete density. If no coverage map is
-provided, edge flags stay false and observed area equals the full disk or
-annulus; completeness is then unknown.
+is not silently treated as a complete density. If no coverage map or
+imagery extent is provided, `window_*_edge` is left unknown (missing),
+not false: false would be read as "not on the edge". Observed area still
+equals the full disk or annulus in that tooling fallback, but completeness
+is unknown, and official tables should attach an imagery extent before a
+density is interpreted.
 
 ## Leave-one-building-out and the neighbor universe
 
@@ -73,8 +78,10 @@ and it does not freeze a Palu ground-mapping crosswalk.
 
 `configs/group3_layers.yaml` records when each listed public source was
 actually reachable on 2026-11-18 (Asia/Shanghai), by HTTP HEAD of a public
-page or portal, plus the product publication date when it is known. No
-raster or official table is stored in git.
+page or portal, plus the product publication date and acquisition window
+when they are known. Acquisition and publication are stored as separate
+fields. Layer usability uses the acquisition window, not the publication
+date, as the cutoff. No raster or official table is stored in git.
 
 A short reading of that ledger:
 
@@ -107,7 +114,8 @@ These are recorded rather than silently decided as official protocol:
    once a layer pack is frozen. The code accepts any polyline pack.
 4. Elevation is a point sample at the coordinate. Slope or relative
    elevation is not computed yet.
-5. When no coverage map is supplied, edge flags are false. Official tables
-   should attach an imagery extent before those flags are interpreted.
+5. When no coverage map is supplied, the implementation leaves edge flags
+   unknown (missing) rather than false. Official tables should still attach
+   an imagery extent before those flags or densities are interpreted.
 6. HydroRivers `product_available_from` is year-only (2019) pending a
    tighter citation if that layer is frozen.

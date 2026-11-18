@@ -17,8 +17,9 @@ from mvbridge.priors.features import compute_group3_features
 from mvbridge.priors.fixtures import (
     SYNTHETIC_EVENT,
     build_default_fixture,
-    future_elevation_grid,
+    future_acquired_elevation_grid,
     isolated_collapse_records,
+    late_published_elevation_grid,
     no_alert_records,
     offset_lat_lon,
 )
@@ -200,10 +201,52 @@ def test_pre_event_alerts_do_not_enter_post_event_neighborhoods():
     assert features["A"].nearest_collapse_distance_m == pytest.approx(20.0, abs=0.05)
 
 
-def test_future_dem_is_unusable_before_its_publication_date():
+def test_layer_usable_ignores_publication_date_and_uses_acquisition_window():
+    as_of = date(2018, 10, 12)
+    assert layer_usable(
+        as_of,
+        acquired_from=date(2011, 1, 1),
+        acquired_until=date(2015, 12, 31),
+        available_from=date(2021, 4, 22),
+        product_available_from=date(2021, 4, 22),
+    ) is True
+    assert layer_usable(
+        as_of,
+        acquired_from=date(2020, 1, 1),
+        acquired_until=date(2022, 12, 31),
+        available_from=date(2015, 1, 1),
+    ) is False
+
+
+def test_late_published_dem_remains_usable_when_acquired_before_as_of():
     fixture = build_default_fixture()
-    future = future_elevation_grid(fixture)
-    assert layer_usable(future.available_from, date(2018, 10, 12)) is False
+    late = late_published_elevation_grid(fixture)
+    assert late.available_from == date(2025, 1, 1)
+    assert layer_usable(
+        date(2018, 10, 12),
+        acquired_from=late.acquired_from,
+        acquired_until=late.acquired_until,
+        available_from=late.available_from,
+    ) is True
+    features = _by_uid(
+        compute_group3_features(
+            _post_records(fixture),
+            elevation=late,
+            water=fixture.water,
+            coverage=fixture.coverage,
+            frame=fixture.frame,
+            as_of=date(2018, 10, 12),
+        )
+    )
+    a = features["A"]
+    assert a.elevation_missing is False
+    assert a.elevation_m is not None
+
+
+def test_future_acquired_dem_is_unusable_as_of_earlier_event():
+    fixture = build_default_fixture()
+    future = future_acquired_elevation_grid(fixture)
+    assert layer_usable(date(2018, 10, 12), acquired_from=future.acquired_from) is False
     features = _by_uid(
         compute_group3_features(
             _post_records(fixture),
@@ -308,15 +351,20 @@ def test_layer_ledger_records_obtainability_and_keeps_alerts_placeholder():
     assert ledger.usable_layers(
         "satellite_alerts", event_id="palu-tsunami-2018", as_of=date(2018, 9, 18)
     ) == ()
+    glo = ledger.get("copernicus_dem_glo30")
+    assert glo.product_available_from == date(2021, 4, 22)
+    assert glo.acquired_from == date(2011, 1, 1)
+    assert glo.acquired_until == date(2015, 12, 31)
     dems = ledger.usable_layers(
         "elevation", event_id="hurricane-michael-2018", as_of=date(2026, 11, 18)
     )
     assert any(layer.id == "copernicus_dem_glo30" for layer in dems)
-    # A 2018 as-of date is before the recorded OpenTopography publication date.
+    # Publication after 2018 must not reject GLO-30 when acquisition is 2011-2015.
     early = ledger.usable_layers(
         "elevation", event_id="hurricane-michael-2018", as_of=date(2018, 10, 12)
     )
-    assert all(layer.id != "copernicus_dem_glo30" for layer in early)
+    assert any(layer.id == "copernicus_dem_glo30" for layer in early)
+    assert glo.usable_as_of(date(2018, 10, 12)) is True
     with pytest.raises(ConfigError, match="official-export placeholders"):
         ledger.assert_no_official_alerts(["hurricane-michael-2018"])
 
@@ -338,10 +386,42 @@ def test_ledger_rejects_obtained_rasters_in_the_repository():
         LayerLedger.from_mapping(payload)
 
 
-def test_unbounded_coverage_does_not_claim_an_edge():
+def test_ledger_usable_as_of_uses_acquisition_not_publication():
+    payload = {
+        "schema_version": 1,
+        "checked_timezone": "Asia/Shanghai",
+        "layers": [
+            {
+                "id": "early_acq_late_pub",
+                "theme": "elevation",
+                "acquired_from": "2011-01-01",
+                "acquired_until": "2015-12-31",
+                "product_available_from": "2021-04-22",
+                "obtainable": True,
+            },
+            {
+                "id": "late_acq",
+                "theme": "elevation",
+                "acquired_from": "2020-01-01",
+                "acquired_until": "2022-12-31",
+                "product_available_from": "2015-01-01",
+                "obtainable": True,
+            },
+        ],
+    }
+    ledger = LayerLedger.from_mapping(payload)
+    as_of = date(2018, 10, 12)
+    ids = {layer.id for layer in ledger.usable_layers("elevation", as_of=as_of)}
+    assert ids == {"early_acq_late_pub"}
+
+
+def test_missing_coverage_leaves_edge_flags_unknown():
     records = no_alert_records()
+    assert CoverageMap().disk_is_edge(0.0, 0.0, 30.0) is None
     features = _by_uid(compute_group3_features(records, coverage=CoverageMap()))
-    assert features["N1"].window_30m_edge is False
+    assert features["N1"].window_30m_edge is None
+    assert features["N1"].window_100_300m_edge is None
+    assert "window_edge_unknown_missing_coverage" in features["N1"].layer_notes
     assert features["N1"].window_30m_observed_area_m2 == pytest.approx(disk_area_m2(30.0))
 
 

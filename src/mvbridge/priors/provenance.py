@@ -39,6 +39,8 @@ class LayerRecord:
     license: str | None
     product_available_from: date | None
     product_available_until: date | None
+    acquired_from: date | None
+    acquired_until: date | None
     checked_at: datetime | None
     check_method: str | None
     http_status: int | None
@@ -56,11 +58,7 @@ class LayerRecord:
             return False
         if self.obtainable is False:
             return False
-        if as_of is None:
-            return self.obtainable is True
-        if self.product_available_from is not None and as_of < self.product_available_from:
-            return False
-        if self.product_available_until is not None and as_of > self.product_available_until:
+        if as_of is not None and self.acquired_from is not None and self.acquired_from > as_of:
             return False
         return self.obtainable is True
 
@@ -105,6 +103,8 @@ def _layer_from_mapping(raw: dict[str, Any]) -> LayerRecord:
         license=raw.get("license"),
         product_available_from=_parse_optional_date(raw.get("product_available_from")),
         product_available_until=_parse_optional_date(raw.get("product_available_until")),
+        acquired_from=_parse_optional_date(raw.get("acquired_from")),
+        acquired_until=_parse_optional_date(raw.get("acquired_until")),
         checked_at=_parse_checked_at(raw.get("checked_at")),
         check_method=raw.get("check_method"),
         http_status=int(raw["http_status"]) if raw.get("http_status") is not None else None,
