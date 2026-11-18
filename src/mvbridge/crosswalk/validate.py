@@ -8,7 +8,7 @@ from typing import Any
 
 from mvbridge.crosswalk.ledger import (
     OFFICIAL_PROTOCOL_PATH,
-    PALU_PROTOCOL_SENTENCES,
+    PALU_PROTOCOL_NON_MAPPING_SENTENCES,
     PAULIK_2019_ID,
     STEER_PROTOCOL_SENTENCES,
     STEER_WIND_FROZEN_RULES,
@@ -466,7 +466,7 @@ def _check_protocol(protocol_path: str | Path) -> list[ValidationIssue]:
         return [_issue("protocol.missing", f"Official protocol not found: {path}", str(path))]
     text = path.read_text(encoding="utf-8")
     issues: list[ValidationIssue] = []
-    for sentence in PALU_PROTOCOL_SENTENCES:
+    for sentence in PALU_PROTOCOL_NON_MAPPING_SENTENCES:
         if sentence not in text:
             issues.append(
                 _issue(
@@ -476,6 +476,11 @@ def _check_protocol(protocol_path: str | Path) -> list[ValidationIssue]:
                     str(path),
                 )
             )
+    # "Full text not obtained." (PALU_PROTOCOL_OBTAINMENT_CITATION in
+    # ledger.py) is a current protocol citation, not a frozen invariant.
+    # Its presence is fine. A later protocol edit that only corrects
+    # obtainment status, while still not freezing Palu mapping, must not
+    # fail this check for that reason.
     for sentence in STEER_PROTOCOL_SENTENCES:
         if sentence not in text:
             issues.append(

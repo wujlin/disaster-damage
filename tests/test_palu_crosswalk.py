@@ -18,6 +18,8 @@ from mvbridge.crosswalk.checks import (
 from mvbridge.crosswalk.fixtures import FIXTURE_NOTE, write_synthetic_ground_fixture
 from mvbridge.crosswalk.ledger import (
     PACKAGED_LEDGER_PATH,
+    PALU_PROTOCOL_NON_MAPPING_SENTENCES,
+    PALU_PROTOCOL_OBTAINMENT_CITATION,
     STEER_WIND_FROZEN_RULES,
     clone_ledger,
     load_ledger,
@@ -68,6 +70,17 @@ def test_ledger_records_paulik_2019_on_wsa_but_mapping_unfrozen():
     buildings = table["buildings_sheet"]
     assert buildings["non_empty_data_rows"] == 463
     assert buildings["rows_with_lat_lon_and_damage_level"] == 463
+    assert buildings["unique_ids"] == 463
+    assert buildings["unique_latitudes"] == 461
+    assert buildings["unique_longitudes"] == 460
+    assert buildings["unique_lat_lon_pairs"] == 463
+    assert buildings["shared_exact_lat_lon_pairs"] == 0
+    coords = ledger["inventory_differences"]["coordinate_uniqueness"]
+    assert coords["unique_ids"] == 463
+    assert coords["unique_latitudes"] == 461
+    assert coords["unique_longitudes"] == 460
+    assert coords["unique_lat_lon_pairs"] == 463
+    assert coords["shared_exact_lat_lon_pairs"] == 0
     freqs = buildings["damage_level_frequencies"]
     assert freqs == {
         "No Damage": 21,
@@ -92,10 +105,10 @@ def test_steer_wind_stays_frozen_and_matches_package():
 
 def test_official_protocol_palu_section_is_not_a_freeze():
     text = PROTOCOL.read_text(encoding="utf-8")
-    assert "Palu is not one-to-one and is not frozen until Paulik et al. (2019) is in hand." in text
-    assert "DS1 → unknown or excluded from a strict crosswalk." in text
-    assert "DS2/DS3 only as exploratory sensitivity." in text
-    assert "Full text not obtained." in text
+    for sentence in PALU_PROTOCOL_NON_MAPPING_SENTENCES:
+        assert sentence in text
+    # Current protocol citation, not a frozen validator invariant.
+    assert PALU_PROTOCOL_OBTAINMENT_CITATION in text
     assert "Palu mapping is frozen" not in text
     assert "Palu is frozen" not in text
 
@@ -190,6 +203,27 @@ def test_validator_rejects_transfer_claim_and_u_flag():
     assert "meta.no_u" in codes
 
 
+def test_protocol_obtainment_citation_is_not_a_frozen_invariant(tmp_path):
+    current = PROTOCOL.read_text(encoding="utf-8")
+    assert PALU_PROTOCOL_OBTAINMENT_CITATION in current
+    report = validate_ledger(load_ledger(LEDGER), protocol_path=PROTOCOL)
+    assert report.ok, [f"{item.code}: {item.message}" for item in report.issues]
+
+    corrected = current.replace(
+        PALU_PROTOCOL_OBTAINMENT_CITATION,
+        "Full text obtained on WSA; Palu mapping remains unfrozen.",
+    )
+    assert PALU_PROTOCOL_OBTAINMENT_CITATION not in corrected
+    for sentence in PALU_PROTOCOL_NON_MAPPING_SENTENCES:
+        assert sentence in corrected
+    assert "Palu mapping is frozen" not in corrected
+    assert "Palu is frozen" not in corrected
+    path = tmp_path / "eval_protocol_obtainment_corrected.md"
+    path.write_text(corrected, encoding="utf-8")
+    report = validate_ledger(load_ledger(LEDGER), protocol_path=path)
+    assert report.ok, [f"{item.code}: {item.message}" for item in report.issues]
+
+
 def test_validator_detects_protocol_palu_sentence_removal(tmp_path):
     text = PROTOCOL.read_text(encoding="utf-8")
     altered = text.replace(
@@ -277,6 +311,17 @@ def test_decision_packet_is_pending_and_matches_renderer(tmp_path):
     assert "Wind events continue to use the already-frozen StEER wind package" in text
     assert "is_main_conclusion: `False`" in text
     assert "It does not treat transfer across hazards as shown or settled." in text
+    assert "## 10. Inventory differences (pre-freeze findings, not frozen protocol facts)" in text
+    assert "### PDF Table 2 vs Buildings sheet Commercial/Unknown" in text
+    assert "### Catalog window vs Paulik event date (must be adjudicated before any freeze)" in text
+    assert "### Palu City survey period is not the event date" in text
+    assert "### Coordinate uniqueness" in text
+    assert "unique IDs: 463" in text
+    assert "unique latitudes: 461" in text
+    assert "unique longitudes: 460" in text
+    assert "unique (lat, lon) pairs: 463" in text
+    assert "must be adjudicated before any freeze" in text
+    assert "must not be conflated with the event date" in text
     assert "cross-hazard transfer is established" not in text.lower()
     assert "Palu mapping is frozen" not in text
     lowered = text.lower()

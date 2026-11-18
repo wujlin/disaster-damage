@@ -34,6 +34,50 @@ def _ledger_digest(ledger: dict[str, Any]) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+
+def _inventory_differences_section(ledger: dict[str, Any]) -> list[str]:
+    """Render inventory findings that are not frozen protocol facts."""
+    diff = ledger.get("inventory_differences") or {}
+    coords = diff.get("coordinate_uniqueness") or {}
+    table2 = diff.get("pdf_table2_vs_buildings_commercial_unknown") or {}
+    event = diff.get("catalog_window_vs_paulik_event_date") or {}
+    survey = diff.get("palu_city_survey_period") or {}
+    lines = [
+        "## 10. Inventory differences (pre-freeze findings, not frozen protocol facts)",
+        "",
+        "These items are inventory findings and pre-freeze issues. They are not",
+        "frozen protocol facts, not a Palu mapping, and not a silent edit of",
+        "`docs/eval_protocol.md` or `configs/event_catalog.yaml`. Palu mapping",
+        "stays `pending_decision` / unfrozen / `obtained_on_wsa_awaiting_adjudication`.",
+        "Purpose remains a decision packet, not a frozen mapping.",
+        "",
+        "### PDF Table 2 vs Buildings sheet Commercial/Unknown",
+        "",
+        str(table2.get("statement") or "").strip(),
+        "",
+        "### Catalog window vs Paulik event date (must be adjudicated before any freeze)",
+        "",
+        str(event.get("statement") or "").strip(),
+        "",
+        "### Palu City survey period is not the event date",
+        "",
+        str(survey.get("statement") or "").strip(),
+        "",
+        "### Coordinate uniqueness",
+        "",
+        f"- unique IDs: {coords.get('unique_ids')}",
+        f"- unique latitudes: {coords.get('unique_latitudes')}",
+        f"- unique longitudes: {coords.get('unique_longitudes')}",
+        f"- unique (lat, lon) pairs: {coords.get('unique_lat_lon_pairs')}",
+        f"- shared exact (lat, lon) pairs: {coords.get('shared_exact_lat_lon_pairs')}",
+        f"- computation: {coords.get('computation')}",
+        "",
+        str(coords.get("statement") or "").strip(),
+        "",
+    ]
+    return lines
+
+
 def render_decision_packet(
     ledger: dict[str, Any],
     *,
@@ -246,10 +290,12 @@ def render_decision_packet(
             lines.append(f"- `{key}`: {value}")
     if lines and lines[-1] != "":
         lines.append("")
+    lines.extend(_inventory_differences_section(ledger))
+    next_section = 11
     if ground_checks is not None:
         lines.extend(
             [
-                "## 10. Ground-side checks on a synthetic fixture",
+                f"## {next_section}. Ground-side checks on a synthetic fixture",
                 "",
                 "These numbers come from a synthetic fixture generator, not from Palu",
                 "field records. They demonstrate the check machinery (date/phase flags,",
@@ -265,9 +311,13 @@ def render_decision_packet(
                 "",
             ]
         )
+        next_section += 1
+    claim_section = next_section
+    decisions_section = claim_section + 1
+    validator_section = decisions_section + 1
     lines.extend(
         [
-            "## 11. What this packet does not claim",
+            f"## {claim_section}. What this packet does not claim",
             "",
             "- It does not freeze a Palu mapping. File obtainment is not a freeze.",
             "- It does not compute U or prediction-based conflict counts.",
@@ -279,7 +329,7 @@ def render_decision_packet(
             "  not a verified Paulik definition.",
             "- MSBFP2 inventory is not a Palu mapping source and is not a protocol freeze.",
             "",
-            "## 12. Decisions requested from Jlin",
+            f"## {decisions_section}. Decisions requested from Jlin",
             "",
         ]
     )
@@ -288,7 +338,7 @@ def render_decision_packet(
     lines.extend(
         [
             "",
-            "## 13. Validator",
+            f"## {validator_section}. Validator",
             "",
             f"- Validator result: `{'PASS' if report.ok else 'FAIL'}`",
             f"- Issue count: {len(report.issues)}",

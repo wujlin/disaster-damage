@@ -51,12 +51,19 @@ STEER_WIND_FROZEN_SOURCE = (
     "Project P0157245, Table 4 and Table 5, printed p. 15."
 )
 
-PALU_PROTOCOL_SENTENCES = (
+# Frozen Palu non-mapping sentences in docs/eval_protocol.md.
+# The obtainment sentence is not in this tuple: it is a current citation only.
+PALU_PROTOCOL_NON_MAPPING_SENTENCES = (
     "Palu is not one-to-one and is not frozen until Paulik et al. (2019) is in hand.",
     "DS1 → unknown or excluded from a strict crosswalk.",
     "DS2/DS3 only as exploratory sensitivity.",
-    "Full text not obtained.",
 )
+
+# Current wording in docs/eval_protocol.md on this worktree. Recorded as a
+# citation of the protocol as it stands, not as a frozen invariant.
+# A later protocol edit that only corrects obtainment status, while still
+# not freezing Palu mapping, must not fail the validator for this reason.
+PALU_PROTOCOL_OBTAINMENT_CITATION = "Full text not obtained."
 
 STEER_PROTOCOL_SENTENCES = (
     "StEER wind is frozen as follows.",

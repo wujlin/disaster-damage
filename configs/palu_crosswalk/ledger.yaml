@@ -195,6 +195,8 @@ palu_mapping:
     - "Decide how, if at all, DL0-DL3 enter official four-class Y (no, minor, major, destroyed) or stay unknown or excluded."
     - "Note that official docs/eval_protocol.md still says full text not obtained. Decide when that protocol sentence should be updated; this worktree does not edit it into a freeze."
     - "Catalog event window remains 2018-09-18 (Gupta Table 1). Paulik PDF p. 1 (journal 3305) states the earthquake and tsunami date as 28 September 2018, 18:02 local time, and PDF p. 5 (journal 3309) Table 2 caption states the Palu City survey as 13-17 November 2018. Reconcile the catalog window against Gupta Table 1 without silently rewriting event_catalog.yaml in this packet."
+    - "Adjudicate the event date before any freeze, because acquisition thresholds and pre-disaster / as-of layers will use it. Keep the Palu City survey period 13-17 November 2018 separate from the event date. See the inventory-differences section."
+    - "Record coordinate uniqueness from the Buildings sheet: 463 unique IDs, 461 unique latitudes, 460 unique longitudes, and 463 unique (lat, lon) pairs, with 0 shared exact pairs. Do not treat the 461/460 marginal counts as the unique-pair count, do not collapse IDs, and do not silently merge buildings. See the inventory-differences section."
     - "Do not write any candidate scheme or DL-to-Y map into the official protocol as frozen in this round."
 
 date_phase_alignment:
@@ -211,6 +213,8 @@ date_phase_alignment:
   imagery_vs_survey_phase: open_catalog_window_still_2018-09-18_do_not_impute_imagery_dates
   open_questions:
     - "Reconcile configs/event_catalog.yaml window 2018-09-18..2018-09-18 (Gupta Table 1) with Paulik's 28 September 2018 event date. This packet verifies Paulik's date from the official PDF but does not silently rewrite the official catalog."
+    - "Event date must be adjudicated before any freeze: the catalog/Gupta Table 1 window is 2018-09-18, Paulik PDF p. 1 (journal 3305) says 2018-09-28, 18:02 local time. Acquisition thresholds and pre-disaster / as-of layers will use the event date, so this is not just a footnote. Recorded only; do not edit event_catalog.yaml."
+    - "Record the Palu City survey period 13-17 November 2018 separately (PDF p. 5 / journal 3309, Table 2 caption). Do not conflate the survey period with the event date."
     - "Align post-event imagery dates with the 13-17 November 2018 field-survey window once imagery dates are documented. Missing imagery dates stay missing."
 
 footprint_checks:
@@ -308,6 +312,8 @@ authorized_storage:
       unique_ids: 463
       unique_latitudes: 461
       unique_longitudes: 460
+      unique_lat_lon_pairs: 463
+      shared_exact_lat_lon_pairs: 0
       damage_level_frequencies:
         "No Damage": 21
         "Partial Damage, Repairable": 250
@@ -340,7 +346,7 @@ authorized_storage:
       foundation_frequencies:
         "Earthen, filled perimeter wall": 448
         "Concrete Slab": 15
-      notes: "Verified on WSA 2026-11-18 (Asia/Shanghai) with openpyxl data_only=True. 463 building-level rows all have numeric Latitude, numeric Longitude, and a Damage Level. This matches the paper statement (PDF p. 1 abstract and Table 2 Building storeys frequency 463) that the survey recorded 463 buildings. Damage Level labels match PDF Table 1 definitions. PDF Table 2 lists Commercial 81 and Unknown 25; the Buildings sheet counts Commercial 82 and Unknown 24 (same 463 total). The sheet is used separately from official xBD palu-tsunami satellite labels, which are never Y. The spreadsheet itself is not committed to git."
+      notes: "Verified on WSA 2026-11-18 (Asia/Shanghai) with openpyxl data_only=True. 463 building-level rows all have numeric Latitude, numeric Longitude, and a Damage Level. This matches the paper statement (PDF p. 1 abstract and Table 2 Building storeys frequency 463) that the survey recorded 463 buildings. Damage Level labels match PDF Table 1 definitions. Unique IDs 463, unique latitudes 461, unique longitudes 460, unique (lat, lon) pairs 463, shared exact (lat, lon) pairs 0. The unique pair count was computed from stored Latitude and Longitude values as coordinate pairs, not from the two marginal unique counts. Inventory differences, including the Table 2 Commercial/Unknown off-by-one, the catalog vs Paulik event-date issue, the survey period, and coordinate uniqueness, are recorded in inventory_differences and in the decision-packet inventory-differences section. They are not frozen protocol facts. The sheet is used separately from official xBD palu-tsunami satellite labels, which are never Y. The spreadsheet itself is not committed to git."
   palu_ground_tables:
     found: true
     path: /mnt/data_hdd/datasets/paulik_palu_2018/ground_tables/24_2019_2254_MOESM1_ESM.xlsx
@@ -388,3 +394,39 @@ authorized_storage:
     not_written_to_official_footprints_or_git: true
     substitute_not_used: /mnt/data_hdd/datasets/building_footprints/michael_florida_ms_legacy_v2_steer_bbox.gpkg
     notes: "Fresh read-only sha256 and polygon count recomputed on WSA CPU on 2026-11-18 (Asia/Shanghai) from the actual file. Inventory only, not a frozen protocol fact. The file was not listed in /mnt/data_hdd/datasets/_catalog/index/datasets.csv and was located by the known filename ms_buildings_mx_psj.geojson. Sample coordinates are around 29.95 N, 85.43 W (Mexico Beach / Port St. Joe, Florida). This is not a Palu footprint layer. The gpkg michael_florida_ms_legacy_v2_steer_bbox.gpkg was not used as a substitute, is a Michael basemap only (mixed capture dates, survey extent), and is not written into official footprints or into git."
+
+inventory_differences:
+  status: pre_freeze_inventory_findings_not_frozen_protocol_facts
+  palu_mapping_status: pending_decision
+  frozen: false
+  obtainment_status: obtained_on_wsa_awaiting_adjudication
+  purpose: decision_packet_not_a_frozen_mapping
+  pdf_table2_vs_buildings_commercial_unknown:
+    paper_table2_commercial: 81
+    paper_table2_unknown: 25
+    buildings_sheet_commercial: 82
+    buildings_sheet_unknown: 24
+    both_totals: 463
+    affects_damage_level: false
+    table2_81_25_recounted_against_pdf: false
+    statement: "PDF Table 2 and the Buildings sheet differ by 1 on Commercial/Unknown: paper Table 2 is Commercial 81 / Unknown 25, Buildings sheet is Commercial 82 / Unknown 24. Both total 463 buildings. This does not affect Damage Level. Table 2's 81/25 was not re-counted against the PDF in the review; the ledger/sheet record stands."
+  catalog_window_vs_paulik_event_date:
+    catalog_window: "2018-09-18"
+    catalog_source: "configs/event_catalog.yaml, Gupta Table 1"
+    paulik_event_date: "2018-09-28"
+    paulik_event_local_time: "18:02 local time"
+    paulik_event_date_source: "PDF p. 1 (journal 3305)"
+    event_catalog_yaml_edited: false
+    statement: "The catalog/Gupta Table 1 window in configs/event_catalog.yaml is still 2018-09-18. Paulik PDF p. 1 (journal 3305) says the earthquake and tsunami were 28 September 2018, 18:02 local time. Acquisition thresholds and pre-disaster / as-of layers will use the event date, so this is not just a footnote. The event date must be adjudicated before any freeze. This is recorded only; this packet does not edit event_catalog.yaml."
+  palu_city_survey_period:
+    survey_period: "13-17 November 2018"
+    survey_period_source: "PDF p. 5 (journal 3309) Table 2 caption"
+    statement: "The Palu City survey period 13-17 November 2018 (PDF p. 5, journal 3309, Table 2 caption) is recorded separately and must not be conflated with the event date."
+  coordinate_uniqueness:
+    unique_ids: 463
+    unique_latitudes: 461
+    unique_longitudes: 460
+    unique_lat_lon_pairs: 463
+    shared_exact_lat_lon_pairs: 0
+    computation: "openpyxl data_only=True on the official publisher Buildings sheet at /mnt/data_hdd/datasets/paulik_palu_2018/ground_tables/24_2019_2254_MOESM1_ESM.xlsx (header_row 1, 463 non-empty data rows). Unique (lat, lon) pairs counted from the stored Latitude and Longitude values as coordinate pairs, not from the two marginal unique counts. Recounted read-only on WSA 2026-11-18 (Asia/Shanghai)."
+    statement: "This is reported because 463 unique IDs are not implied by the unique latitude count (461) or the unique longitude count (460); the unique (lat, lon) pair count has to be computed separately as coordinate pairs, not from those two marginal counts. Fresh openpyxl data_only=True recount on the Buildings sheet gives unique IDs 463, unique latitudes 461, unique longitudes 460, and unique (lat, lon) pairs 463, with 0 shared exact (lat, lon) pairs. Some buildings share a latitude or a longitude, but no two IDs share an exact coordinate pair. Do not treat the 461/460 marginal counts as the unique-coordinate-pair count. Do not silently merge buildings that share a coordinate, and do not collapse IDs on shared coordinates. Before any freeze, any later proposal to merge records still needs to be explained as re-survey/duplicate records versus distinct buildings."
