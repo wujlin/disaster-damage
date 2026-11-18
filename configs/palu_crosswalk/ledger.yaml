@@ -1,0 +1,390 @@
+# Palu mapping ledger. This file is a decision package for Jlin, not a freeze.
+# Official source of truth for Palu ground reference is the Paulik 2019 PDF
+# plus the publisher xlsx Buildings sheet. Earlier DS1/DS2/DS3 candidate
+# schemes are not the mapping and must not be applied. Do not copy raw
+# PDF/xlsx/geojson/gpkg files into git.
+
+meta:
+  title: Palu mapping ledger
+  status: pending_decision
+  purpose: decision_packet_for_jlin_not_a_frozen_mapping
+  official_protocol: docs/eval_protocol.md
+  official_protocol_palu_policy: not_one_to_one_not_frozen_until_paulik_2019_in_hand
+  cross_hazard_transfer_established: false
+  compute_u_or_model_conflicts: false
+  wind_events_use: steer_wind_frozen_package
+  inventory_computed: "2026-11-18 (Asia/Shanghai)"
+
+sources:
+  - id: paulik_2019
+    citation: "Paulik et al., 2019, Pure and Applied Geophysics 176:3305–3321, doi:10.1007/s00024-019-02254-9"
+    role: primary_palu_field_survey
+    version: "176:3305-3321"
+    locus: "full 17-page official PDF plus publisher ESM xlsx Buildings sheet"
+    obtainment_status: obtained_on_wsa_awaiting_adjudication
+    full_text_obtained: true
+    may_define_official_y: true
+    blocks_palu_freeze: true
+    notes: "Official PDF and publisher survey table are now on WSA under /mnt/data_hdd/datasets/paulik_palu_2018/. Inventory (paths, hashes, sheet counts, and PDF grade definitions) is recorded below. Official docs/eval_protocol.md still says full text not obtained and is not edited here. Palu mapping stays unfrozen until Jlin adjudicates official Y from Paulik's own DL0-DL3 definitions. Do not treat this obtainment as a freeze."
+
+  - id: lahcene_2021
+    citation: "Lahcene et al., 2021, NHESS 21:2315–2316, Table 1"
+    role: secondary_palu_only
+    version: "21:2315-2316"
+    locus: "Table 1"
+    obtainment_status: cited_in_protocol
+    full_text_obtained: false
+    may_define_official_y: false
+    blocks_palu_freeze: false
+    notes: "Secondary Palu source only. It does not define official Y and must not be used in place of the official Paulik PDF and publisher Buildings sheet."
+
+  - id: jalayer_2023
+    citation: "Jalayer et al., 2023, NHESS 23:914, Table 2"
+    role: secondary_palu_only
+    version: "23:914"
+    locus: "Table 2"
+    obtainment_status: cited_in_protocol
+    full_text_obtained: false
+    may_define_official_y: false
+    blocks_palu_freeze: false
+    notes: "Secondary Palu source only. Jalayer's phrase \"complete structural collapse\" is Jalayer's wording, not a verified Paulik definition."
+
+  - id: prevatt_roueche_2020_report_06_20
+    citation: "Prevatt and Roueche, 15 June 2020, Hurricane Michael Data Enhancement (Phase II), Report No. 06-20, University of Florida, for Florida DBPR, Project P0157245, Table 4 and Table 5, printed p. 15"
+    role: steer_wind_frozen_source
+    version: "Report 06-20"
+    locus: "Table 4 and Table 5, printed p. 15"
+    obtainment_status: obtained
+    full_text_obtained: true
+    may_define_official_y: false
+    blocks_palu_freeze: false
+    notes: "Source of the already-frozen StEER wind grade-4 promotion rule. Wind events continue to use this package."
+
+  - id: roueche_2024_nhr
+    citation: "Roueche, Nakayama, Kijewski-Correa, Prevatt, 2024, Natural Hazards Review 25(2):04023060, printed page 04023060-6, Tables 3 and 4"
+    role: steer_component_field_tables
+    version: "25(2):04023060"
+    locus: "printed page 04023060-6, Tables 3 and 4"
+    obtainment_status: obtained
+    full_text_obtained: true
+    may_define_official_y: false
+    blocks_palu_freeze: false
+    notes: "Source for the component-field tables. Which cells of WiSPD Table 3 are bold is unverified. Do not cite those bold cells as if read."
+
+  - id: gupta_2019_xbd
+    citation: "Gupta et al., 2019, Creating xBD, CVPR Workshops, conference proceedings pp. 12–13, Figure 3"
+    role: official_xbd_wording
+    version: "CVPR Workshops 2019"
+    locus: "pp. 12-13, Figure 3 (body on p. 12 also calls it Table 3)"
+    obtainment_status: obtained
+    full_text_obtained: true
+    may_define_official_y: false
+    blocks_palu_freeze: false
+    notes: "Official xBD labels are never Y. The Joint Damage Scale is not an authoritative ground assessment rating."
+
+frozen_mappings:
+  - id: steer_wind
+    hazard: wind
+    status: approved
+    frozen: true
+    code_F_from: component_fields_never_from_the_grade
+    source: "Prevatt and Roueche, 15 June 2020, Hurricane Michael Data Enhancement (Phase II), Report No. 06-20, University of Florida, for Florida DBPR, Project P0157245, Table 4 and Table 5, printed p. 15."
+    rules:
+      "0": "no"
+      "1": minor_does_not_satisfy_F
+      "2": minor_never_major
+      "3": major_only_with_recorded_partial_roof_or_wall_structural_failure_otherwise_minor_or_unknown
+      "4": "default_major_in_Q; promote_to_destroyed_only_with_explicit_collapse_or_no_longer_present_or_living_area_wall_structure_failure_and_no_intact_roof; table4_shading_is_not_a_promotion_rule; missing_fields_stay_major"
+      "-1": excluded_from_wind_Y_not_no_damage
+    notes: "Already frozen. This worktree must not change these rules."
+
+  - id: dins_affected_to_no
+    hazard: wildfire
+    status: approved
+    frozen: true
+    source: "docs/eval_protocol.md Label section, CAL FIRE DINS"
+    rules:
+      "Affected": "no"
+    notes: "Frozen. No rollback. Pre-registered sensitivities (Affected → minor, Affected → unknown) are not the frozen map."
+
+  - id: fema
+    hazard: multi
+    status: approved
+    frozen: true
+    source: "docs/eval_protocol.md Label section, FEMA damage assessment records"
+    notes: "FEMA mapping stays frozen."
+
+official_grade_system:
+  source_id: paulik_2019
+  frozen: false
+  is_main_conclusion: false
+  write_to_official_protocol_as_frozen: false
+  applied_to_official_y: false
+  scale: DL0_to_DL3
+  not_ds0_ds3: true
+  scheme_basis: "PDF p. 3 (journal 3307): four-state ordinal damage division similar to Peiris (2006), ranging from DL0 (No damage) to DL3 (Complete damage)."
+  table: "PDF p. 4 (journal 3308), Table 1, Assignment of damage levels to tsunami affected structures in Palu City"
+  definitions:
+    DL0: "No damage"
+    DL1: "Partial damage, repairable"
+    DL2: "Partial damage, unrepairable"
+    DL3: "Complete damage"
+  xlsx_damage_level_labels:
+    - "No Damage"
+    - "Partial Damage, Repairable"
+    - "Partial Damage, Unrepairable"
+    - "Complete Damage"
+  notes: "These are Paulik's own grade definitions, inventoried from the official PDF Table 1 and matching the publisher Buildings-sheet Damage Level labels (capitalization differs slightly). They are not a freeze of official Y and are not a completed Palu mapping. Earlier DS0-DS3 candidate schemes are a different grade vocabulary and must not be applied as the mapping."
+
+palu_mapping:
+  status: pending_decision
+  frozen: false
+  is_main_conclusion: false
+  write_to_official_protocol_as_frozen: false
+  primary_source_id: paulik_2019
+  official_protocol_statements:
+    - "Palu is not one-to-one and is not frozen until Paulik et al. (2019) is in hand."
+    - "DS1 → unknown or excluded from a strict crosswalk."
+    - "DS2/DS3 only as exploratory sensitivity."
+    - "Paulik et al., 2019, Pure and Applied Geophysics 176:3305–3321, doi:10.1007/s00024-019-02254-9. Full text not obtained."
+  blocking_items:
+    - id: paulik_2019_full_text
+      status: obtained
+      description: "Official 17-page PDF and publisher ESM xlsx are on WSA. Inventory is in authorized_storage. Official protocol text is unchanged. This obtainment does not freeze Palu."
+    - id: jlin_adjudication_of_dl_mapping
+      status: pending
+      description: "Jlin must adjudicate official Y from Paulik's own DL0-DL3 definitions in PDF Table 1 and the publisher Buildings sheet. Do not apply the earlier DS1/DS2/DS3 candidate schemes."
+  candidate_schemes:
+    - id: strict_ds1_unknown_exclude_ds2_ds3
+      status: not_applied
+      applied_as_mapping: false
+      is_main_conclusion: false
+      write_to_official_protocol_as_frozen: false
+      frozen: false
+      approved: false
+      rules:
+        DS1: unknown_or_excluded_from_y
+        DS2: not_mapped_to_y
+        DS3: not_mapped_to_y
+      notes: "Historical candidate only. Official Paulik grades are DL0-DL3, not DS1-DS3. This scheme must not be applied as the mapping."
+    - id: exploratory_ds2_major_ds3_destroyed
+      status: not_applied
+      applied_as_mapping: false
+      is_main_conclusion: false
+      write_to_official_protocol_as_frozen: false
+      frozen: false
+      approved: false
+      rules:
+        DS2: major
+        DS3: destroyed
+      notes: "Historical exploratory candidate only. Official Paulik grades are DL0-DL3, not DS2-DS3. This scheme must not be applied as the mapping."
+    - id: ds0_to_no_listed_separately
+      status: not_applied
+      applied_as_mapping: false
+      is_main_conclusion: false
+      write_to_official_protocol_as_frozen: false
+      frozen: false
+      approved: false
+      rules:
+        DS0: "no"
+      notes: "Historical listed-separately candidate only. Official Paulik grades are DL0-DL3, not DS0. This scheme must not be applied as the mapping."
+  decisions_requested:
+    - "Keep Palu unfrozen in this round. File obtainment is not a freeze."
+    - "Adjudicate official Y from Paulik Table 1 DL0-DL3 (No damage; Partial damage, repairable; Partial damage, unrepairable; Complete damage) and the publisher Buildings-sheet labels, not from Jalayer wording and not from the earlier DS0-DS3 schemes."
+    - "Do not apply the earlier DS1/DS2/DS3 candidate schemes as the mapping."
+    - "Decide how, if at all, DL0-DL3 enter official four-class Y (no, minor, major, destroyed) or stay unknown or excluded."
+    - "Note that official docs/eval_protocol.md still says full text not obtained. Decide when that protocol sentence should be updated; this worktree does not edit it into a freeze."
+    - "Catalog event window remains 2018-09-18 (Gupta Table 1). Paulik PDF p. 1 (journal 3305) states the earthquake and tsunami date as 28 September 2018, 18:02 local time, and PDF p. 5 (journal 3309) Table 2 caption states the Palu City survey as 13-17 November 2018. Reconcile the catalog window against Gupta Table 1 without silently rewriting event_catalog.yaml in this packet."
+    - "Do not write any candidate scheme or DL-to-Y map into the official protocol as frozen in this round."
+
+date_phase_alignment:
+  event_id: palu-tsunami-2018
+  catalog_start: "2018-09-18"
+  catalog_end: "2018-09-18"
+  catalog_source: "configs/event_catalog.yaml, sourced as Gupta et al. Table 1, tier 1, xView2 slug palu-tsunami"
+  commonly_cited_event_date: "2018-09-28"
+  commonly_cited_event_date_status: verified_in_paulik_2019_pdf_page_1_journal_3305
+  paulik_event_date: "2018-09-28"
+  paulik_event_date_source: "Official PDF p. 1 (journal 3305): On Friday 28 September 2018, at 18:02 p.m. local time, a shallow strike-slip earthquake of moment magnitude 7.5 occurred near Palu City, Central Sulawesi, Indonesia. The paper title also uses after the September 28 2018 Sulawesi Earthquake and Tsunami."
+  survey_dates: "2018-11-13 to 2018-11-17"
+  survey_dates_source: "Official PDF p. 5 (journal 3309), Table 2 caption: A summary of information collected for tsunami hazard and damaged structures in Palu City between 13th to 17th of November 2018. Abstract (PDF p. 1) also says a field survey was carried out seven weeks after the earthquake."
+  imagery_vs_survey_phase: open_catalog_window_still_2018-09-18_do_not_impute_imagery_dates
+  open_questions:
+    - "Reconcile configs/event_catalog.yaml window 2018-09-18..2018-09-18 (Gupta Table 1) with Paulik's 28 September 2018 event date. This packet verifies Paulik's date from the official PDF but does not silently rewrite the official catalog."
+    - "Align post-event imagery dates with the 13-17 November 2018 field-survey window once imagery dates are documented. Missing imagery dates stay missing."
+
+footprint_checks:
+  iou_match_min: 0.5
+  ambiguity_iou: 0.3
+  best_second_ratio_min: 1.2
+  localization_error_m_max: 30
+  palu_footprint_layer_path: null
+  palu_ground_table_path: /mnt/data_hdd/datasets/paulik_palu_2018/ground_tables/24_2019_2254_MOESM1_ESM.xlsx
+  notes: "Numeric gates are the already-frozen protocol rules. The publisher Buildings sheet is the authorized Palu ground table and stays outside git. No Palu-specific official footprint layer path is entered. MSBFP2 inventory is recorded under authorized_storage and is not a Palu mapping source."
+
+unresolved_classes:
+  - class: DL0
+    status: unresolved
+    official_definition: "No damage (PDF Table 1, p. 4 / journal 3308)"
+    xlsx_label: "No Damage"
+    xlsx_count: 21
+  - class: DL1
+    status: unresolved
+    official_definition: "Partial damage, repairable (PDF Table 1, p. 4 / journal 3308)"
+    xlsx_label: "Partial Damage, Repairable"
+    xlsx_count: 250
+  - class: DL2
+    status: unresolved
+    official_definition: "Partial damage, unrepairable (PDF Table 1, p. 4 / journal 3308)"
+    xlsx_label: "Partial Damage, Unrepairable"
+    xlsx_count: 94
+  - class: DL3
+    status: unresolved
+    official_definition: "Complete damage (PDF Table 1, p. 4 / journal 3308)"
+    xlsx_label: "Complete Damage"
+    xlsx_count: 98
+  - class: DS0
+    status: not_the_official_paulik_grade_system
+    official_guidance: "Do not apply. Official Paulik grades are DL0-DL3."
+  - class: DS1
+    status: not_the_official_paulik_grade_system
+    official_guidance: "Do not apply. Official Paulik grades are DL0-DL3."
+  - class: DS2
+    status: not_the_official_paulik_grade_system
+    official_guidance: "Do not apply. Official Paulik grades are DL0-DL3."
+  - class: DS3
+    status: not_the_official_paulik_grade_system
+    official_guidance: "Do not apply. Official Paulik grades are DL0-DL3."
+  - class: other_or_missing
+    status: unresolved
+    official_guidance: "Leave unresolved until Jlin adjudicates any residual class."
+
+authorized_storage:
+  policy: "Commit only schemas, ledgers, and synthetic fixture generators. Point at authorized paths instead of adding real Palu microdata."
+  inventory_computed: "2026-11-18 (Asia/Shanghai)"
+  official_paulik_pdf:
+    found: true
+    path: /mnt/data_hdd/datasets/paulik_palu_2018/literature/Paulik_et_al_2019_Palu_10.1007_s00024-019-02254-9.pdf
+    filename: Paulik_et_al_2019_Palu_10.1007_s00024-019-02254-9.pdf
+    sha256: a88cde36279b637f12c72e9fde34ff08c8ec3fcbc6bce601a62877236cf82c71
+    pages: 17
+    bytes: 3627766
+    title: "Tsunami Hazard and Built Environment Damage Observations from Palu City after the September 28 2018 Sulawesi Earthquake and Tsunami"
+    doi: "10.1007/s00024-019-02254-9"
+    pdfinfo_author: "Ryan Paulik"
+    pdfinfo_creator: Springer
+    origin: official_springer_pdf_metadata_and_filename_match_doi
+    notes: "pdfinfo reports Pages=17, File size=3627766 bytes, PDF version 1.6, Creator=Springer, Subject includes the DOI. sha256 was computed read-only on WSA on 2026-11-18 (Asia/Shanghai). The PDF is not committed to git."
+  publisher_survey_table:
+    found: true
+    path: /mnt/data_hdd/datasets/paulik_palu_2018/ground_tables/24_2019_2254_MOESM1_ESM.xlsx
+    filename: 24_2019_2254_MOESM1_ESM.xlsx
+    sha256: fc72889951d5e116e498d2ba841680e69e5297bbedbf2976cd19d097e7f7a04b
+    bytes: 86437
+    origin: publisher_esm_filename_matches_doi_article_2254_and_sheet_count_matches_paper
+    sheets:
+      - Buildings
+      - Roads
+      - Utility Poles
+    buildings_sheet:
+      header_row: 1
+      max_row: 464
+      non_empty_data_rows: 463
+      used_fields:
+        - ID
+        - Latitude
+        - Longitude
+        - Flow Depth Above Ground Level (m)
+        - Flow Depth Above Building First Floor Level (m)
+        - Damage Level
+        - Building Use
+        - Building Construction Frame
+        - Building Storeys
+        - Building Foundation
+        - Building Floor Height (m)
+      unused_trailing_columns: 5
+      rows_with_numeric_lat_lon: 463
+      rows_with_lat_lon_and_damage_level: 463
+      unique_ids: 463
+      unique_latitudes: 461
+      unique_longitudes: 460
+      damage_level_frequencies:
+        "No Damage": 21
+        "Partial Damage, Repairable": 250
+        "Partial Damage, Unrepairable": 94
+        "Complete Damage": 98
+      building_use_frequencies:
+        Residential: 278
+        Commercial: 82
+        Education: 27
+        Unknown: 24
+        "Hotel, Resort": 14
+        Industrial: 8
+        Religious: 7
+        Community: 6
+        Government: 6
+        Agricultural: 6
+        "Hospital, Clinic": 4
+        "Emergency Service": 1
+      construction_frame_frequencies:
+        "Masonry, Unreinforced clay brick": 391
+        "Timber/Wood": 32
+        "Reinforced Concrete": 20
+        "Masonry, Unknown": 13
+        Steel: 4
+        "Masonry, Unreinforced, with manufacture stone units": 3
+      storeys_frequencies:
+        "1": 417
+        "2": 43
+        "3": 3
+      foundation_frequencies:
+        "Earthen, filled perimeter wall": 448
+        "Concrete Slab": 15
+      notes: "Verified on WSA 2026-11-18 (Asia/Shanghai) with openpyxl data_only=True. 463 building-level rows all have numeric Latitude, numeric Longitude, and a Damage Level. This matches the paper statement (PDF p. 1 abstract and Table 2 Building storeys frequency 463) that the survey recorded 463 buildings. Damage Level labels match PDF Table 1 definitions. PDF Table 2 lists Commercial 81 and Unknown 25; the Buildings sheet counts Commercial 82 and Unknown 24 (same 463 total). The sheet is used separately from official xBD palu-tsunami satellite labels, which are never Y. The spreadsheet itself is not committed to git."
+  palu_ground_tables:
+    found: true
+    path: /mnt/data_hdd/datasets/paulik_palu_2018/ground_tables/24_2019_2254_MOESM1_ESM.xlsx
+    sha256: fc72889951d5e116e498d2ba841680e69e5297bbedbf2976cd19d097e7f7a04b
+    origin: publisher_esm_filename_matches_doi_article_2254_and_sheet_count_matches_paper
+    notes: "Same file as authorized_storage.publisher_survey_table. Earlier searches on this worktree predated Jlin placing these files on WSA."
+  xbd_palu_tsunami_tiles:
+    found: true
+    path: /mnt/data_hdd/datasets/xbd
+    filename_prefix: palu-tsunami
+    sha256: not_computed_not_a_ground_table
+    origin: official_xbd_xview2_satellite_labels
+    notes: "Palu-named files at this path are official xBD / xView2 satellite image labels and targets. They are not Paulik 2019 field tables and are never Y."
+  building_footprint_catalog:
+    found: true
+    path: /mnt/data_hdd/datasets/_catalog/building_footprints
+    palu_or_sulawesi_or_paulik_entry: false
+    notes: "DATASET_INDEX.txt, datasets.csv, resources.csv, issues.csv, catalog.json, SHA256SUMS, and publication_manifest.json have no Palu, Sulawesi, Indonesia, or Paulik entry."
+  catalog_index:
+    path: /mnt/data_hdd/datasets/_catalog/index/datasets.csv
+    msbfp2_listed: false
+    ms_buildings_mx_psj_listed: false
+    notes: "Searched datasets.csv (46 data rows plus header), catalog.json, SHA256SUMS, and manifests/ under this index. No MSBFP2, msbfp, mx_psj, or ms_buildings entry. The only Microsoft-related id is microsoft_us_legacy17_snapshot20261117 (17 US states, primary path on WSB), which is not this file."
+  msbfp2:
+    catalog_index_path: /mnt/data_hdd/datasets/_catalog/index/datasets.csv
+    listed_in_catalog_index: false
+    found: true
+    found_via: known_filename_ms_buildings_mx_psj.geojson
+    path: /mnt/data_hdd/audits/third_event_coverage_v0/maxar_michael/ms_buildings_mx_psj.geojson
+    filename: ms_buildings_mx_psj.geojson
+    sha256: b2d2da34c1d1e8d10ebb59d4a6c9de54e69399ce6f58f646d5c6bd167a4dd2b8
+    bytes: 2992993
+    geojson_type: FeatureCollection
+    n_features: 6035
+    polygon_count: 6035
+    geometry_types: "Polygon: 6035"
+    sample_property_keys:
+      - BlockgroupID
+      - OBJECTID
+      - Shape__Area
+      - Shape__Length
+      - StateAbbrev
+      - _query_box
+    not_a_palu_mapping_source: true
+    not_written_to_official_footprints_or_git: true
+    substitute_not_used: /mnt/data_hdd/datasets/building_footprints/michael_florida_ms_legacy_v2_steer_bbox.gpkg
+    notes: "Fresh read-only sha256 and polygon count recomputed on WSA CPU on 2026-11-18 (Asia/Shanghai) from the actual file. Inventory only, not a frozen protocol fact. The file was not listed in /mnt/data_hdd/datasets/_catalog/index/datasets.csv and was located by the known filename ms_buildings_mx_psj.geojson. Sample coordinates are around 29.95 N, 85.43 W (Mexico Beach / Port St. Joe, Florida). This is not a Palu footprint layer. The gpkg michael_florida_ms_legacy_v2_steer_bbox.gpkg was not used as a substitute, is a Michael basemap only (mixed capture dates, survey extent), and is not written into official footprints or into git."

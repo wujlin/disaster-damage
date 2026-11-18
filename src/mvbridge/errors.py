@@ -7,3 +7,7 @@ class ConfigError(ValueError):
 
 class DataError(FileNotFoundError):
     """Configured metadata or imagery cannot be read."""
+
+
+class CrosswalkError(ValueError):
+    """A mapping ledger, protocol check, or ground-side table is invalid."""
