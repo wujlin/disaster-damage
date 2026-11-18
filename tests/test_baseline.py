@@ -177,6 +177,7 @@ def test_checkpoint_round_trip_keeps_damage_weights(tmp_path):
 
 
 def test_vitb_dry_run_and_rejects_larger_backbones():
+    # 224 here is the short-side probe. The official U recipe is image size 518.
     logger = torch_logger()
     result = dry_run_forward(
         {

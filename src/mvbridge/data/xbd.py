@@ -1,7 +1,8 @@
 """Building-damage examples from the official xBD / xView2 splits.
 
 The dataset reads one of ``train``, ``test``, or ``holdout``. It does not
-reshuffle image pairs across those directories.
+reshuffle image pairs across those directories. Optional fold filters keep or
+drop whole images by the exact ``metadata.disaster`` string.
 """
 
 from __future__ import annotations
@@ -37,10 +38,11 @@ class BuildingExample:
     pre_box: tuple[int, int, int, int]
     post_box: tuple[int, int, int, int]
     split: str
+    disaster: str = ""
 
 
 class XBDBuildingDataset(Dataset):
-    def __init__(self, config: dict, *, split: str):
+    def __init__(self, config: dict, *, split: str, allow_empty: bool = False):
         if split not in OFFICIAL_SPLIT_NAMES:
             raise ConfigError(
                 f"Split {split!r} is not an official xBD/xView2 split. "
@@ -72,14 +74,18 @@ class XBDBuildingDataset(Dataset):
         self.crop_padding = int(config.get("crop_padding", 16))
         self.images_dir = images_dir.resolve()
         excluded = read_id_list(config.get("exclude_ids_file"))
+        exclude_disasters = _name_set(config.get("exclude_disasters"))
+        include_only_disasters = _name_set(config.get("include_only_disasters"))
         self.examples, self.stats = _index_buildings(
             images_dir=images_dir,
             labels_dir=labels_dir,
             split=split,
             padding=self.crop_padding,
             excluded=excluded,
+            exclude_disasters=exclude_disasters,
+            include_only_disasters=include_only_disasters,
         )
-        if not self.examples:
+        if not self.examples and not allow_empty:
             raise DataError(
                 f"Official xBD {split} split contains no classified buildings in {labels_dir}. "
                 f"Index stats: {self.stats}"
@@ -111,6 +117,17 @@ class XBDBuildingDataset(Dataset):
         return {example.image_id for example in self.examples}
 
 
+def _name_set(value) -> set[str] | None:
+    """Return a set of exact disaster names, or None when the filter is unset."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return {text} if text else None
+    names = {str(item).strip() for item in value if str(item).strip()}
+    return names or None
+
+
 def _index_buildings(
     *,
     images_dir: Path,
@@ -118,6 +135,8 @@ def _index_buildings(
     split: str,
     padding: int,
     excluded: set[str],
+    exclude_disasters: set[str] | None = None,
+    include_only_disasters: set[str] | None = None,
 ) -> tuple[list[BuildingExample], dict]:
     pairs: dict[str, dict[str, Path]] = {}
     for path in sorted(images_dir.iterdir()):
@@ -143,6 +162,9 @@ def _index_buildings(
         "skipped_unclassified": 0,
         "skipped_without_box": 0,
     }
+    fold_filter = bool(exclude_disasters or include_only_disasters)
+    if fold_filter:
+        stats["excluded_fold_images"] = 0
     for image_id, images in sorted(pairs.items()):
         if "pre" not in images or "post" not in images:
             stats["incomplete_pairs"] += 1
@@ -156,8 +178,22 @@ def _index_buildings(
             stats["missing_labels"] += 1
             continue
         post_label = load_label_file(label_files["post"])
+        if fold_filter:
+            disaster_name = post_label.disaster_metadata
+            if not disaster_name:
+                raise DataError(
+                    f"{label_files['post']} has no metadata.disaster. "
+                    "Fold filtering matches that field and does not use the filename."
+                )
+            excluded_by_fold = bool(exclude_disasters and disaster_name in exclude_disasters)
+            if include_only_disasters and disaster_name not in include_only_disasters:
+                excluded_by_fold = True
+            if excluded_by_fold:
+                stats["excluded_fold_images"] += 1
+                continue
         pre_label = load_label_file(label_files["pre"]) if "pre" in label_files else None
         pre_boxes = {} if pre_label is None else {building.uid: building.xy_box for building in pre_label.buildings}
+        disaster = post_label.disaster_metadata or post_label.disaster_raw
         from PIL import Image
 
         with Image.open(images["pre"]) as pre_image:
@@ -186,6 +222,7 @@ def _index_buildings(
                     pre_box=square_crop_box(pre_box_raw, padding, pre_size[0], pre_size[1]),
                     post_box=square_crop_box(post_box_raw, padding, post_size[0], post_size[1]),
                     split=split,
+                    disaster=disaster,
                 )
             )
     return examples, stats

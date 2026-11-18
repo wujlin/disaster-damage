@@ -1,0 +1,167 @@
+# Group-3 public-layer obtainability ledger.
+#
+# Checked timestamps are Asia/Shanghai. This file records whether a public
+# access page or product endpoint responded on the check date. It is not a
+# download log: rasters, water geometries, real footprints, and official
+# satellite alert tables stay out of the repository.
+#
+# Michael and Palu geographic layers may be prepared from these sources.
+# Preparing Palu layers does not announce that cross-hazard transfer or
+# migration has been established.
+#
+# Michael's (and Palu's) real satellite-side alert columns remain
+# OFFICIAL_EXPORT_PLACEHOLDER until the official export is joined.
+
+schema_version: 1
+checked_timezone: Asia/Shanghai
+notes: >
+  HTTP checks on 2026-11-18 were issued from a development host, not from
+  WSA, and only recorded status codes plus publication notes. No public
+  raster or geometry file was downloaded into this tree.
+
+layers:
+  - id: copernicus_dem_glo30
+    theme: elevation
+    intended_events: [hurricane-michael-2018, palu-tsunami-2018]
+    title: Copernicus DEM GLO-30 (OpenTopography distribution)
+    citation: >
+      European Space Agency (2024). Copernicus Global Digital Elevation
+      Model. Distributed by OpenTopography. https://doi.org/10.5069/G9028PQB
+    access_url: https://portal.opentopography.org/raster?opentopoID=OTSDEM.032021.4326.3
+    license: Copernicus license, as stated by the OpenTopography distribution page
+    acquired_from: "2011-01-01"
+    acquired_until: "2015-12-31"
+    product_available_from: "2021-04-22"
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: HTTP HEAD of the OpenTopography raster portal page
+    http_status: 200
+    obtainable: true
+    obtained_into_repo: false
+    notes: >
+      Portal page returned HTTP 200 on the check date, so the public
+      distribution was reachable. A HEAD of
+      https://opentopography.s3.sdsc.edu/raster/COP30/ returned 404, so that
+      exact bulk-listing URL was not confirmed. TanDEM-X acquisition is
+      2011-2015 and therefore predates Michael and Palu, but the
+      OpenTopography publication date recorded here is 2021-04-22, after
+      both events. acquired_from / acquired_until are year bounds for that
+      already-noted 2011-2015 collection window; product_available_from stays
+      the publication date. Usability checks use the acquisition window, not
+      the publication date. The product is a DSM (includes buildings and
+      vegetation).
+      Whether a post-2018 public DSM may be used as a static terrain prior
+      for a 2018 retrospective is a scientific choice, not decided here.
+
+  - id: usgs_3dep
+    theme: elevation
+    intended_events: [hurricane-michael-2018]
+    title: USGS 3D Elevation Program
+    access_url: https://www.usgs.gov/3d-elevation-program
+    citation: U.S. Geological Survey, 3D Elevation Program
+    license: US Government public-domain elevation products, subject to USGS terms
+    product_available_from: null
+    checked_at: "2026-11-18T07:24:00+08:00"
+    check_method: HTTP HEAD of the USGS 3DEP program page
+    http_status: 403
+    obtainable: null
+    obtained_into_repo: false
+    notes: >
+      HEAD returned 403 from the development fetch path. That is not
+      evidence the program is unavailable. Status is left inconclusive.
+      3DEP is a CONUS product and is not a Palu elevation source.
+
+  - id: hydrosheds_hydrorivers
+    theme: water
+    intended_events: [hurricane-michael-2018, palu-tsunami-2018]
+    title: HydroSHEDS HydroRivers
+    access_url: https://www.hydrosheds.org/products/hydrorivers
+    citation: Lehner and Grill (2013) and the HydroRivers product documentation
+    license: HydroSHEDS license as published on the product page
+    product_available_from: "2019-01-01"
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: HTTP HEAD of the HydroRivers product page
+    http_status: 200
+    obtainable: true
+    obtained_into_repo: false
+    notes: >
+      Product page returned HTTP 200. The available-from date is a
+      conservative year-only placeholder for the HydroRivers public release
+      (2019) and should be tightened from the product documentation if this
+      layer is frozen. Inland rivers complement, and do not replace, a
+      coastline source.
+
+  - id: osm_land_polygons
+    theme: water
+    intended_events: [hurricane-michael-2018, palu-tsunami-2018]
+    title: OSM land polygons (osmdata.openstreetmap.de)
+    access_url: https://osmdata.openstreetmap.de/data/land-polygons.html
+    citation: OpenStreetMap contributors, land polygons via osmdata.openstreetmap.de
+    license: ODbL
+    product_available_from: null
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: HTTP HEAD of the OSM land-polygons page
+    http_status: 200
+    obtainable: true
+    obtained_into_repo: false
+    notes: >
+      Page returned HTTP 200. OSM is continuously edited, so a frozen
+      extract date is required before this source is used in an official
+      feature table. Coast/land polygons do not by themselves provide
+      inland water.
+
+  - id: jrc_global_surface_water
+    theme: water
+    intended_events: [hurricane-michael-2018, palu-tsunami-2018]
+    title: JRC Global Surface Water
+    access_url: https://global-surface-water.appspot.com/
+    citation: Pekel, Cottam, Gorelick and Belward (2016), Nature
+    license: as stated by the JRC Global Surface Water site
+    product_available_from: "2016-01-01"
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: HTTP HEAD of the JRC Global Surface Water portal
+    http_status: 200
+    obtainable: true
+    obtained_into_repo: false
+    notes: >
+      Portal returned HTTP 200. Yearly history exists, so a vintage year
+      should be frozen before official use. The 2016 available-from date is
+      the initial Nature publication year, not a per-tile extract date.
+
+  - id: michael_satellite_alerts
+    theme: satellite_alerts
+    intended_events: [hurricane-michael-2018]
+    title: Official Michael satellite-side alert / grade column
+    access_url: null
+    citation: Official Michael leave-one-event export (not yet joined)
+    license: null
+    product_available_from: null
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: none, placeholder by protocol
+    http_status: null
+    obtainable: false
+    obtained_into_repo: false
+    status: OFFICIAL_EXPORT_PLACEHOLDER
+    notes: >
+      Real Michael satellite-called damage grades and collapse flags wait
+      for the official export. This repository must not fill the column
+      from ground labels, unofficial scores, or invented values. Geographic
+      features can still be prepared.
+
+  - id: palu_satellite_alerts
+    theme: satellite_alerts
+    intended_events: [palu-tsunami-2018]
+    title: Official Palu satellite-side alert / grade column
+    access_url: null
+    citation: Official Palu leave-one-event export (not yet joined)
+    license: null
+    product_available_from: null
+    checked_at: "2026-11-18T07:27:00+08:00"
+    check_method: none, placeholder by protocol
+    http_status: null
+    obtainable: false
+    obtained_into_repo: false
+    status: OFFICIAL_EXPORT_PLACEHOLDER
+    notes: >
+      Same placeholder rule as Michael. Preparing Palu geographic layers
+      now does not establish that transfer or migration has been shown, and
+      it does not freeze a Palu ground-mapping crosswalk.

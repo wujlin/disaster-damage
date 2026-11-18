@@ -9,12 +9,14 @@ representation. A later residual or change-detection head replaces
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 
 import torch
 from torch import nn
 
-from mvbridge.errors import ConfigError
+from mvbridge.errors import ConfigError, DataError
 
 ALLOWED_BACKBONES = {"vit_base_patch14_dinov2", "vit_base_patch14_dinov2.lvd142m"}
 
@@ -79,14 +81,22 @@ class TimmDinoEncoder(nn.Module):
             raise ConfigError(f"image_size must be a multiple of 14 for DINOv2 ViT-B/14, got {image_size}")
         import timm
 
-        self.backbone = timm.create_model(
-            name,
-            pretrained=bool(pretrained) and not weights_path,
-            num_classes=0,
-            img_size=image_size,
-        )
+        # A local weights_path is the only encoder source. Do not ask timm to download.
         if weights_path:
-            _load_encoder_weights(self.backbone, weights_path)
+            self.backbone = timm.create_model(
+                name,
+                pretrained=False,
+                num_classes=0,
+                img_size=image_size,
+            )
+            load_local_encoder_weights(self.backbone, weights_path)
+        else:
+            self.backbone = timm.create_model(
+                name,
+                pretrained=bool(pretrained),
+                num_classes=0,
+                img_size=image_size,
+            )
         self.out_dim = int(self.backbone.embed_dim)
 
     def forward(self, images: torch.Tensor) -> IdentityFeatures:
@@ -142,17 +152,95 @@ class DamageHead(nn.Module):
         return self.net(torch.cat([state.residual, state.post], dim=-1))
 
 
-def _load_encoder_weights(module: nn.Module, path: str) -> None:
-    blob = torch.load(path, map_location="cpu")
-    if isinstance(blob, dict) and "state_dict" in blob:
+def load_local_encoder_weights(module: nn.Module, path: str | Path) -> None:
+    """Load a local state dict. Both missing_keys and unexpected_keys must be empty.
+
+    A mismatch raises. This function does not download a replacement.
+    """
+    file_path = Path(path)
+    if not file_path.is_file():
+        raise DataError(
+            f"Encoder weights do not exist: {file_path}. "
+            "A configured weights_path is not replaced by a pretrained download."
+        )
+    blob = torch.load(file_path, map_location="cpu")
+    if isinstance(blob, dict) and "state_dict" in blob and isinstance(blob["state_dict"], dict):
         blob = blob["state_dict"]
     if not isinstance(blob, dict):
-        raise ConfigError(f"Encoder weights at {path} are not a state dict")
+        raise ConfigError(f"Encoder weights at {file_path} are not a state dict")
     cleaned = {}
     for key, value in blob.items():
-        new_key = key
+        new_key = str(key)
         for prefix in ("module.", "backbone.", "encoder."):
             if new_key.startswith(prefix):
                 new_key = new_key[len(prefix) :]
         cleaned[new_key] = value
-    module.load_state_dict(cleaned, strict=True)
+    incompatible = module.load_state_dict(cleaned, strict=False)
+    missing = list(incompatible.missing_keys)
+    unexpected = list(incompatible.unexpected_keys)
+    if missing or unexpected:
+        raise ConfigError(
+            f"Local encoder weights {file_path} do not match the model. "
+            f"missing_keys={missing} unexpected_keys={unexpected}. "
+            "Refusing to download a replacement."
+        )
+
+
+def file_sha256(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def prepare_local_backbone(config: dict, logger) -> str | None:
+    """Hash the configured encoder file, log both weight identities, and refuse a mismatch.
+
+    No-op when ``backbone.weights_path`` is unset, which is the no-fold training config.
+    """
+    backbone = config.get("backbone") or {}
+    weights_path = backbone.get("weights_path")
+    if not weights_path:
+        return None
+    path = Path(str(weights_path))
+    if not path.is_file():
+        raise DataError(
+            f"Encoder weights do not exist: {path}. "
+            "A configured weights_path is not replaced by a pretrained download."
+        )
+    expected = str(backbone.get("weights_sha256") or "").strip().lower()
+    if not expected:
+        raise ConfigError(f"backbone.weights_sha256 is required when backbone.weights_path is set ({path}).")
+    digest = file_sha256(path)
+    size = path.stat().st_size
+    backbone = config.setdefault("backbone", {})
+    backbone["pretrained"] = False
+    provenance = config.get("weight_provenance") or {}
+    loaded = provenance.get("loaded") or {}
+    original = provenance.get("original") or {}
+    logger.info(
+        "configured timm-converted weights file=%s bytes=%s sha256=%s",
+        loaded.get("filename") or path.name,
+        loaded.get("bytes", backbone.get("weights_bytes")),
+        expected,
+    )
+    logger.info(
+        "configured original Facebook weights file=%s bytes=%s sha256=%s",
+        original.get("filename"),
+        original.get("bytes"),
+        original.get("sha256"),
+    )
+    logger.info(
+        "weights conversion source timm=%s hf_revision=%s upstream=%s",
+        provenance.get("timm"),
+        provenance.get("hf_revision"),
+        provenance.get("upstream"),
+    )
+    logger.info("loaded weights path=%s bytes=%s sha256=%s", path, size, digest)
+    if digest != expected:
+        raise ConfigError(
+            f"Encoder weights sha256 {digest} does not match configured {expected} for {path}. "
+            "Refusing to train and refusing to download a replacement."
+        )
+    return digest

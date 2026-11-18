@@ -1,0 +1,217 @@
+# Leave-one-reference-event-out folds for the satellite damage head.
+# Architecture: DINOv2 ViT-B/14. Seed: 1, the frozen conflict/satellite head.
+# Official image size is 518, from configs/xbd_dinov2_vitb.yaml
+# (backbone.image_size and data.image_size). These entries do not override it.
+# 224 is a short-side probe only. The weight loader does not interpolate pos_embed.
+#
+# This file is an appendable list. Add a later fold (for example
+# minus-hurricane-florence) by adding an entry. Out-of-fold routing reads the
+# list and does not hardcode fold names or how many reference folds exist.
+#
+# A fold head removes every image whose metadata.disaster is in holdout_events
+# from the official train, test, and hold splits. Those images are a separate
+# eval set. They are not train, val, or that head's in-fold test/hold.
+# Host paths are explicit. WSB (RTX 4090) keeps data and weights under
+# /data/repo. WSA (RTX 5880) keeps the Palu fold's data, weights, logs, and
+# checkpoints under /mnt/data_hdd because the WSA root disk is full.
+# Batch size, AMP dtype, and the torch release are pinned once in `train`.
+# A fold may repeat them, but a different value is an error. The detected GPU
+# does not change those three.
+#
+# Encoder weights that training loads (timm conversion, not the Facebook file):
+#   dinov2_vitb14_timm_lvd142m.pth
+#   346,385,151 bytes
+#   sha256 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+# Original Facebook file this conversion came from:
+#   dinov2_vitb14_pretrain.pth
+#   346,378,731 bytes
+#   sha256 0b8b82f85de91b424aded121c7e1dcc2b7bc6d0adeea651bf73a13307fad8c73
+# Conversion source: timm timm/vit_base_patch14_dinov2.lvd142m,
+#   HF revision 4685c99dabffe5affac90bd99dbffd25801ae58d,
+#   upstream https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth
+# The run logs both hashes. It computes the sha256 of the file at weights_path
+# and fails if that digest is not the configured timm-converted sha256.
+# pretrained is false whenever weights_path is set, so a key mismatch cannot
+# fall back to a download.
+#
+# claim_evidence: true means the fold may produce the satellite grade for
+# conflict labels. Pipeline-check folds are runnable and are not Claim-2 evidence.
+# manifest_sha256 and checkpoint_sha256 stay null until a real run. Do not
+# invent them. Training writes the manifest hash to the log and to
+# output_dir/fold_<name>_manifest.json. Copy that hash and the checkpoint file
+# hash into docs/folds.md after the head is trained.
+
+seed: 1
+
+weight_provenance:
+  loaded:
+    filename: dinov2_vitb14_timm_lvd142m.pth
+    bytes: 346385151
+    sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+  original:
+    filename: dinov2_vitb14_pretrain.pth
+    bytes: 346378731
+    sha256: 0b8b82f85de91b424aded121c7e1dcc2b7bc6d0adeea651bf73a13307fad8c73
+  timm: timm/vit_base_patch14_dinov2.lvd142m
+  hf_revision: 4685c99dabffe5affac90bd99dbffd25801ae58d
+  upstream: https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth
+
+# Batch size and AMP dtype are the same on every host. Torch is not pinned
+# (Jlin option b). Each run records the actual torch, CUDA, driver, and GPU
+# in run_env.json.
+train:
+  batch_size: 32
+  amp_dtype: bfloat16
+
+hosts:
+  wsb:
+    gpu: RTX 4090
+    data_root: /data/repo/datasets/xbd
+    holdout_dirname: hold
+    weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+    output_root: /data/repo/outputs
+  wsa:
+    gpu: RTX 5880
+    data_root: /mnt/data_hdd/datasets/xbd
+    holdout_dirname: hold
+    weights_path: /mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+    output_root: /mnt/data_hdd/outputs
+
+folds:
+  - name: minus-hurricane-michael
+    holdout_events:
+      - hurricane-michael
+    role: main
+    enabled: true
+    claim_evidence: true
+    seed: 1
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsb
+    batch_size: 32
+    amp_dtype: bfloat16
+    output_dir: /data/repo/outputs/minus-hurricane-michael
+    data:
+      root: /data/repo/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      MAIN seed-1 fold. Runs on WSB GPU 1 (RTX 4090). Hold out hurricane-michael.
+      A head that has seen Michael must not produce the satellite damage
+      grade for Michael buildings.
+
+  # Stability repeat of minus-hurricane-michael. WSB GPU 0 runs this entry.
+  # Same hold-out, paths, and training pin. Seed, output directory, role, and
+  # claim_evidence differ. It does not define U. Not a CLI override.
+  - name: minus-hurricane-michael-seed2
+    holdout_events:
+      - hurricane-michael
+    role: seed-repeat
+    enabled: true
+    claim_evidence: false
+    seed: 2
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsb
+    batch_size: 32
+    amp_dtype: bfloat16
+    output_dir: /data/repo/outputs/minus-hurricane-michael-seed2
+    data:
+      root: /data/repo/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      Stability repeat of the Michael hold-out at seed 2. Runs on WSB GPU 0.
+      Same event, paths, batch size, AMP dtype, torch pin, and weight sha256
+      as minus-hurricane-michael. claim_evidence is false, so it does not
+      define U. Train and score it by name with --fold. Checkpoints go to a
+      separate output directory.
+
+  - name: minus-palu-tsunami
+    holdout_events:
+      - palu-tsunami
+    role: secondary
+    enabled: true
+    claim_evidence: true
+    seed: 1
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsa
+    batch_size: 32
+    amp_dtype: bfloat16
+    output_dir: /mnt/data_hdd/outputs/minus-palu-tsunami
+    data:
+      root: /mnt/data_hdd/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      Second reference fold. Runs on WSA (RTX 5880). Data, weights, logs, and
+      checkpoints stay under /mnt/data_hdd. The fold name trains and evaluates
+      end to end. It is not a placeholder.
+
+  - name: minus-santa-rosa
+    holdout_events:
+      - santa-rosa-wildfire
+    role: pipeline-check
+    enabled: true
+    claim_evidence: false
+    seed: 1
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsb
+    batch_size: 32
+    amp_dtype: bfloat16
+    output_dir: /data/repo/outputs/minus-santa-rosa
+    data:
+      root: /data/repo/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      Pipeline check only, on WSB. Not the seed-1 main fold and not Claim-2
+      evidence. Santa Rosa and Woolsey/socal are a wildfire pipeline check.
+
+  - name: minus-socal
+    holdout_events:
+      - socal-fire
+    role: pipeline-check
+    enabled: true
+    claim_evidence: false
+    seed: 1
+    manifest_sha256: null
+    checkpoint_sha256: null
+    host: wsb
+    batch_size: 32
+    amp_dtype: bfloat16
+    output_dir: /data/repo/outputs/minus-socal
+    data:
+      root: /data/repo/datasets/xbd
+      split_dirs:
+        holdout: hold
+    backbone:
+      weights_path: /data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth
+      weights_sha256: 6cce660bf1cdf01bc70ad96d53c3ad4d7d02fd4211a669b04abba9aaa848e66c
+      weights_bytes: 346385151
+      pretrained: false
+    notes: >
+      Pipeline check only, on WSB, for metadata.disaster socal-fire (Woolsey/socal).
+      Not Claim-2 evidence. Santa Rosa and Woolsey/socal are a wildfire pipeline check.
