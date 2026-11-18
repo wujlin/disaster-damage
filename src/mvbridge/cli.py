@@ -27,7 +27,12 @@ from mvbridge.demo import prepare_audit_demo, prepare_sagin_demo, summarize_sagi
 from mvbridge.engine.eval import run_evaluation
 from mvbridge.engine.logutil import configure_logging, log_config
 from mvbridge.engine.train import run_training
-from mvbridge.errors import ConfigError, DataError
+from mvbridge.crosswalk.checks import run_ground_side_checks
+from mvbridge.crosswalk.fixtures import write_synthetic_ground_fixture
+from mvbridge.crosswalk.ledger import PACKAGED_LEDGER_PATH, load_ledger
+from mvbridge.crosswalk.packet import write_decision_packet
+from mvbridge.crosswalk.validate import validate_ledger
+from mvbridge.errors import ConfigError, CrosswalkError, DataError
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -69,6 +74,25 @@ def main(argv: list[str] | None = None) -> int:
     agree.add_argument("--left", required=True, help="predictions JSON from the training environment")
     agree.add_argument("--right", required=True, help="predictions JSON from the other environment")
 
+    palu = subparsers.add_parser(
+        "palu-crosswalk",
+        help="Validate the Palu mapping ledger and write the Jlin decision packet",
+    )
+    palu.add_argument("--ledger", default=str(PACKAGED_LEDGER_PATH), help="Path to the Palu mapping ledger")
+    palu.add_argument("--protocol", default=None, help="Official eval protocol to check against")
+    palu.add_argument("--packet-out", default=None, help="Write the decision packet Markdown to this path")
+    palu.add_argument(
+        "--write-synthetic-fixture",
+        default=None,
+        help="Write a synthetic ground-reference fixture. Not real Palu microdata.",
+    )
+    palu.add_argument(
+        "--ground-table",
+        default=None,
+        help="Authorized JSON table with ground_records and footprints. Refused if it has predictions or U.",
+    )
+    palu.add_argument("--checks-out", default=None, help="Write ground-side check JSON to this path")
+
     route = subparsers.add_parser(
         "oof-route",
         help="Route one metadata.disaster value to the head that never saw that event",
@@ -96,11 +120,64 @@ def main(argv: list[str] | None = None) -> int:
             return _oof_route(args)
         if args.command == "cross-env-agree":
             return _cross_env_agree(args)
-    except (ConfigError, DataError, FileNotFoundError) as exc:
+        if args.command == "palu-crosswalk":
+            return _palu_crosswalk(args)
+    except (ConfigError, CrosswalkError, DataError, FileNotFoundError) as exc:
         print(f"error: {exc}")
         return 2
     print(f"error: unknown command {args.command}")
     return 2
+
+
+
+def _palu_crosswalk(args) -> int:
+    import json
+    from mvbridge.crosswalk.ledger import OFFICIAL_PROTOCOL_PATH
+
+    ledger = load_ledger(args.ledger)
+    protocol = Path(args.protocol) if args.protocol else OFFICIAL_PROTOCOL_PATH
+    report = validate_ledger(ledger, protocol_path=protocol)
+    report.raise_if_failed()
+    print("validator=PASS")
+    print(f"ledger={ledger.get('_path', args.ledger)}")
+    print("paulik_2019=obtained_on_wsa_awaiting_adjudication")
+    print("palu_mapping=pending_decision")
+    print("steer_wind=approved_frozen")
+    print("cross_hazard_transfer_established=false")
+    print("computes_u=false")
+
+    ground_checks = None
+    fixture_path = args.write_synthetic_fixture
+    ground_path = args.ground_table
+    if fixture_path and ground_path:
+        raise CrosswalkError("Pass only one of --write-synthetic-fixture or --ground-table.")
+    if fixture_path:
+        path = write_synthetic_ground_fixture(fixture_path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        ground_checks = run_ground_side_checks(payload, ledger)
+        print(f"synthetic_fixture={path}")
+    elif ground_path:
+        path = Path(ground_path)
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise CrosswalkError(f"Ground table must be a JSON object: {path}")
+        ground_checks = run_ground_side_checks(payload, ledger)
+        print(f"ground_table={path}")
+    if ground_checks is not None:
+        print(f"n_records={ground_checks['n_records']}")
+        print(f"footprint_match_counts={ground_checks['footprint_match_counts']}")
+        print(f"multipoint_inconsistencies={len(ground_checks['multipoint_inconsistencies'])}")
+        if args.checks_out:
+            out = Path(args.checks_out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(ground_checks, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(f"checks_out={out}")
+
+    packet_out = args.packet_out
+    if packet_out:
+        dest = write_decision_packet(ledger, packet_out, report=report, ground_checks=ground_checks)
+        print(f"packet_out={dest}")
+    return 0
 
 
 def _add_config_args(parser: argparse.ArgumentParser, default_config: str) -> None:
