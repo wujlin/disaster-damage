@@ -13,7 +13,7 @@ This repository does not download datasets or checkpoints, and it does not start
 configs/overlap_audit.yaml      event buffer, date window, data roots
 configs/event_catalog.yaml      date-specific event ids and known name collisions
 configs/sagin_loader.yaml       place-grouped SAGIN loader
-configs/xbd_dinov2_vitb.yaml    official-split ViT-B baseline
+configs/xbd_dinov2_vitb.yaml    official-split ViT-B baseline (image size 518)
 configs/folds/event_folds.yaml  leave-one-reference-event-out folds (seed 1)
 src/mvbridge/                   package
 scripts/                        thin wrappers around the same entry points
@@ -156,9 +156,7 @@ xBD ViT-B baseline. This command trains. It reads only `split_dirs.train`. With 
 python -m mvbridge train-xbd \
   --set data.root=/data/xBD \
   --set output_dir=/data/work/xbd_dinov2_vitb \
-  --set batch_size=32 \
-  --set backbone.image_size=224 \
-  --set data.image_size=224
+  --set batch_size=32
 ```
 
 `--max-steps 20` stops after a few updates for a debugging pass. Logs go to stdout and `output_dir/run.log`: resolved config, device, class histogram, first image ids, first-batch shapes, per-step loss, and a checkpoint that stores the damage pathway and the head, not a second copy of the backbone. Identity parameters stay frozen (`identity_trainable=0`). The optimizer lists only the damage pathway and the damage head.
@@ -171,7 +169,7 @@ python -m mvbridge train-xbd --fold minus-hurricane-michael
 
 On WSB the Michael fold reads `/data/repo/datasets/xbd` and `/data/repo/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and writes `/data/repo/outputs/minus-hurricane-michael`. On WSA the Palu fold uses `/mnt/data_hdd/datasets/xbd`, `/mnt/data_hdd/weights/dinov2_vitb14/dinov2_vitb14_timm_lvd142m.pth`, and `/mnt/data_hdd/outputs/minus-palu-tsunami`. Both folds pin batch size 32 and AMP `bfloat16`. Torch is recorded in `run_env.json` and is not checked against a shared version. The 4090 and the 5880 do not change the batch size or the AMP dtype. `python -m mvbridge oof-route --disaster hurricane-michael` prints the head that may score Michael buildings. It does not average heads.
 
-Image size must be a multiple of 14. The default 224 is a short-side probe; 518 matches the DINOv2 training resolution and is a config change, not a different backbone. `vit_large_*` is rejected.
+Image size must be a multiple of 14. The official recipe that defines \(U\) for this xBD DINOv2 ViT-B fold training is 518, on both `backbone.image_size` and `data.image_size` in `configs/xbd_dinov2_vitb.yaml`. `train-xbd --fold` reads that file. Fold entries do not replace the image size. 224 is a short-side probe only. The local weight loader does not interpolate positional embeddings and rejects a size mismatch, so a 518 checkpoint is not resized onto a 224 model. Batch size stays 32, AMP stays `bfloat16`, and `freeze` stays true. `vit_large_*` is rejected.
 
 Evaluation without a fold accepts only `test` or `holdout`:
 
