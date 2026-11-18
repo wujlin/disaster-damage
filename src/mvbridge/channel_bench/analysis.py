@@ -213,8 +213,10 @@ def run_channel_stress_bench(
         rng_seed=rng_seed,
     )
 
-    # Evidence ratios on comparable C, one Q table per pre-fixed imprint bin.
-    # Scoring remains leave-block-out; the ratio shift uses a block bootstrap.
+    # Evidence-ratio point estimates use a full-sample Q fitted on all
+    # comparable-visibility rows. This is a different convention from the
+    # grade-weighted log scores above, which are leave-block-out. The shift
+    # interval is a block bootstrap of that full-sample estimator.
     ratios, ratio_shift = bootstrap_evidence_ratio_shift(
         comparable,
         mixture=lock.fixed_damage_mixture,
@@ -241,10 +243,13 @@ def run_channel_stress_bench(
         subset = [row for row in comparable if imprint_bin(row.imprint_score) == bin_id]
         mismatch_by_bin[bin_id] = float(np.mean([row.s != row.y for row in subset]))
     mismatch_values = [mismatch_by_bin[bin_id] for bin_id in bin_ids]
+    # Heuristic only: proposed/unlocked rise cutoff, not a locked official threshold.
     mismatch_rises = (
-        len(mismatch_values) >= 2 and mismatch_values[-1] - mismatch_values[0] > 0.03
+        len(mismatch_values) >= 2
+        and mismatch_values[-1] - mismatch_values[0] > lock.mismatch_rise_threshold
     )
 
+    # Hits are S != Y, not official U (U_E or U_F).
     hits = np.array([row.s != row.y for row in eligible], dtype=bool)
     uids = np.array([row.building_uid for row in eligible], dtype=object)
     budget_rates: dict[str, BudgetHitRate] = {}
@@ -274,6 +279,17 @@ def run_channel_stress_bench(
     notes.append(
         "Negligible-gain band width is unlocked_pending_jlin and is not used "
         "as an official ceiling threshold."
+    )
+    notes.append(
+        "Budget hit rate uses S != Y, not official U (U_E or U_F)."
+    )
+    notes.append(
+        "Evidence-ratio point estimates use full-sample Q, which is a "
+        "different convention from leave-block-out log scores."
+    )
+    notes.append(
+        "mismatch_rises_with_imprint threshold is proposed_unlocked "
+        f"({lock.mismatch_rise_threshold:g}), not a locked official cutoff."
     )
     if dropped:
         notes.append("grades dropped from the weighted log score: " + ",".join(dropped))

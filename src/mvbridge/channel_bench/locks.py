@@ -34,6 +34,17 @@ PROPOSED_IMPRINT_EDGES = (0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0)
 PROPOSED_HIGH_SCORE_TAIL = 0.20
 PROPOSED_MISSED_ERROR_TAIL = 0.50
 PROPOSED_REVIEW_QUOTA = 8
+
+# Proposed heuristic only. Not on the pending-Jlin list and not a locked
+# official threshold. Status stays proposed_unlocked until Jlin says otherwise.
+PROPOSED_MISMATCH_RISE_THRESHOLD = 0.03
+PROPOSED_MISMATCH_RISE_THRESHOLD_STATUS = "proposed_unlocked"
+
+# Present in T as schema columns only. Not already-frozen Group-3 features.
+UNFROZEN_CANDIDATE_TRACE_FIELDS: tuple[str, ...] = (
+    "elevation",
+    "dist_to_water",
+)
 DESIGN_VERSION = "channel-bench-lock-v1"
 
 
@@ -92,6 +103,9 @@ class AnalysisLock:
         "elevation",
         "dist_to_water",
     )
+    # elevation and dist_to_water are listed in trace_fields for the schema,
+    # but they are unfrozen/candidate inputs, not frozen Group-3 features.
+    unfrozen_candidate_trace_fields: tuple[str, ...] = UNFROZEN_CANDIDATE_TRACE_FIELDS
     trace_excludes_index_building_alarm: bool = True
     imprint_field: str = "imprint_score"
     imprint_bin_edges: tuple[float, ...] = PROPOSED_IMPRINT_EDGES
@@ -114,6 +128,8 @@ class AnalysisLock:
     interval_level: float = PROPOSED_INTERVAL_LEVEL
     leave_out_scheme: str = "leave_block_out"
     negligible_gain_band: NegligibleGainBand = field(default_factory=NegligibleGainBand)
+    mismatch_rise_threshold: float = PROPOSED_MISMATCH_RISE_THRESHOLD
+    mismatch_rise_threshold_status: str = PROPOSED_MISMATCH_RISE_THRESHOLD_STATUS
     official_recipe_untouched: bool = True
     accepts_official_michael_inputs: bool = False
 

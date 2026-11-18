@@ -97,6 +97,11 @@ def _ratios_from_rows(
     alpha: float,
     grades: tuple[str, ...],
 ) -> dict[str, float]:
+    """Fit one Q table on the full provided sample and read bin ratios.
+
+    This full-sample convention is not the leave-block-out scheme used
+    for grade-weighted log scores of Q.
+    """
     if not rows:
         raise ValueError("cannot estimate evidence ratios from an empty sample")
     keys = np.array([f"t{imprint_bin(row.imprint_score)}" for row in rows], dtype=object)
@@ -122,6 +127,12 @@ def bootstrap_evidence_ratio_shift(
     rng_seed: int = 0,
 ) -> tuple[dict[str, float], PairedBlockInterval]:
     """Observed bin ratios plus a block-bootstrap interval for LR(low) - LR(high).
+
+    The reported point estimate fits Q on the full provided sample, then
+    reads the intact evidence log-ratio in each pre-fixed imprint bin.
+    That is a different convention from the leave-block-out log scores of
+    Q. The interval resamples blocks and, in each replicate, refits the
+    same full-sample estimator; it is not a leave-block-out score.
 
     A positive lower bound means the intact evidence log-ratio falls along the
     pre-fixed imprint gradient. An interval that contains 0 is a stable ratio.

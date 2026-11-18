@@ -3,6 +3,9 @@
 Column names are intended to join later with score-contract and
 widearea-priors-group3 exports. This module does not read those trees or
 any official Michael dump.
+
+``elevation`` and ``dist_to_water`` are unfrozen/candidate input columns.
+They must not be treated as already-frozen Group-3 features.
 """
 
 from __future__ import annotations
@@ -10,7 +13,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from mvbridge.channel_bench.locks import DAMAGE_CLASSES, INTACT_CLASS
+from mvbridge.channel_bench.locks import (
+    DAMAGE_CLASSES,
+    INTACT_CLASS,
+    UNFROZEN_CANDIDATE_TRACE_FIELDS,
+)
 
 # Re-exported so callers can depend on one schema module.
 __all__ = [
@@ -21,6 +28,7 @@ __all__ = [
     "class_index",
     "imprint_bin",
     "require_known_grade",
+    "UNFROZEN_CANDIDATE_TRACE_FIELDS",
 ]
 
 ANALYSIS_TABLE_COLUMNS: tuple[str, ...] = (
@@ -97,8 +105,8 @@ class BuildingAnalysisRow:
     sat_alarm_density_30m: float | None = None
     sat_alarm_density_100_300m: float | None = None
     dist_to_nearest_sat_collapsed: float | None = None
-    elevation: float | None = None
-    dist_to_water: float | None = None
+    elevation: float | None = None  # unfrozen/candidate, not a frozen Group-3 feature
+    dist_to_water: float | None = None  # unfrozen/candidate, not a frozen Group-3 feature
     index_building_alarm_excluded: bool = True
     rankings: Mapping[str, float] = field(default_factory=dict)
     extras: Mapping[str, Any] = field(default_factory=dict)

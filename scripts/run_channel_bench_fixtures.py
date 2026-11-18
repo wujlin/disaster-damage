@@ -64,6 +64,13 @@ def main() -> None:
         "design_version": ANALYSIS_LOCK.design_version,
         "official_recipe_untouched": ANALYSIS_LOCK.official_recipe_untouched,
         "accepts_official_michael_inputs": ANALYSIS_LOCK.accepts_official_michael_inputs,
+        "budget_hit_definition": "S != Y, not official U (U_E or U_F)",
+        "evidence_ratio_point_estimate": "full_sample_Q_not_leave_block_out",
+        "mismatch_rises_with_imprint_threshold": {
+            "value": ANALYSIS_LOCK.mismatch_rise_threshold,
+            "status": ANALYSIS_LOCK.mismatch_rise_threshold_status,
+        },
+        "unfrozen_candidate_trace_fields": list(ANALYSIS_LOCK.unfrozen_candidate_trace_fields),
         "equal_likelihood_leaves_prior_unchanged": equal.prior_unchanged,
         "prior_change": _summary(run_channel_stress_bench(prior.rows, family=prior.family)),
         "q_change": _summary(run_channel_stress_bench(q_change.rows, family=q_change.family)),

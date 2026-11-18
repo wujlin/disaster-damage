@@ -189,8 +189,10 @@ def _sample_rows(
         q_used[i] = table[y_index[i]]
         s_index[i] = int(rng.choice(len(DAMAGE_CLASSES), p=table[y_index[i]]))
 
-    # Rankings: Group-3 tracks imprint / public-geo proxies. Visual mismatch
-    # is informative only when Q actually varies with imprint.
+    # Rankings: Group-3 tracks use imprint / public-geo proxies. The
+    # elevation and dist_to_water columns are unfrozen/candidate inputs,
+    # not already-frozen Group-3 features. Visual mismatch is informative
+    # only when Q actually varies with imprint.
     neighborhood = imprint + 0.02 * rng.normal(size=n)
     public_geo = 0.5 * imprint + 0.05 * rng.normal(size=n)
     combined = 0.7 * neighborhood + 0.3 * public_geo
@@ -225,6 +227,7 @@ def _sample_rows(
                 sat_alarm_density_30m=float(imprint[i]),
                 sat_alarm_density_100_300m=float(0.8 * imprint[i]),
                 dist_to_nearest_sat_collapsed=float(1.0 - imprint[i]),
+                # Unfrozen/candidate inputs, not frozen Group-3 features.
                 elevation=10.0,
                 dist_to_water=float(2.0 - imprint[i]),
                 rankings={

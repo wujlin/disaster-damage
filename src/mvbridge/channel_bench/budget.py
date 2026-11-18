@@ -1,4 +1,7 @@
-"""Fixed-budget audit hit rates on a locked eligible list."""
+"""Fixed-budget audit hit rates on a locked eligible list.
+
+In this bench a hit is ``S != Y``, not official U (``U_E or U_F``).
+"""
 
 from __future__ import annotations
 
@@ -17,6 +20,8 @@ class BudgetHitRate:
     n_eligible: int
     budget: float
     ranking_name: str
+    # Explicit so reports cannot be read as official U (U_E or U_F).
+    hit_definition: str = "S_neq_Y_not_official_U"
 
 
 def _audit_count(n_eligible: int, budget: float) -> int:
@@ -39,9 +44,12 @@ def budget_hit_rate(
 ) -> BudgetHitRate:
     """Hit rate in the top ``floor(budget * N)`` buildings, ties broken by uid.
 
-    A hit is a precomputed boolean (in this bench, ``S != Y``). Scores are
-    ranked descending. The eligible list must already be filtered by the
-    caller; this function does not drop rows.
+    A hit is a precomputed boolean. In this bench the caller must pass
+    ``S != Y`` (frozen satellite grade differs from the aligned ground
+    grade). That disagreement is not official U (``U_E or U_F``). Do not
+    report or interpret this hit rate as official U. Scores are ranked
+    descending. The eligible list must already be filtered by the caller;
+    this function does not drop rows.
     """
     score_vec = np.asarray(scores, dtype=np.float64)
     hit_vec = np.asarray(hits, dtype=bool)

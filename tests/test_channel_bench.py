@@ -148,6 +148,7 @@ def test_budget_hit_rate_perfect_and_anti_rankers():
     good = budget_hit_rate(perfect, hits, building_uids=uids, budget=0.10)
     bad = budget_hit_rate(anti, hits, building_uids=uids, budget=0.10)
     assert good.n_audited == 20
+    assert good.hit_definition == "S_neq_Y_not_official_U"
     assert good.hit_rate == pytest.approx(1.0)
     assert bad.hit_rate == pytest.approx(0.0)
     tied = np.ones(n)
@@ -192,6 +193,9 @@ def test_prior_change_fixture_recovers_hotspots_not_channel_loss():
     # Do not claim official ceiling while the band is unlocked.
     assert not result.official_ceiling_claim_allowed
     assert result.negligible_gain_band.status == "unlocked_pending_jlin"
+    assert "Budget hit rate uses S != Y, not official U" in " ".join(result.notes)
+    assert "full-sample Q" in " ".join(result.notes)
+    assert "proposed_unlocked" in " ".join(result.notes)
     # Group-3 combined should beat a reversed exposure ranking as a hotspot check.
     hits = arrays["mismatch"]
     uids = arrays["building_uid"]
@@ -287,6 +291,9 @@ def test_analysis_lock_marks_negligible_band_unofficial():
         "missed_error",
         "matched_condition_correct",
     )
+    assert ANALYSIS_LOCK.unfrozen_candidate_trace_fields == ("elevation", "dist_to_water")
+    assert ANALYSIS_LOCK.mismatch_rise_threshold == 0.03
+    assert ANALYSIS_LOCK.mismatch_rise_threshold_status == "proposed_unlocked"
 
 
 def test_imprint_bins_use_prefixed_edges_not_labels():
